@@ -753,6 +753,29 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
 .piece.player-start-glow {
     animation: playerStartGlow 1s ease-out 1;
 }
+.piece.engine-move-glow {
+    animation: engineMoveGlow .85s ease-out 1;
+}
+.piece.white.engine-move-glow {
+    text-shadow:
+        0 0 5px rgba(180,255,210,.95),
+        0 0 12px rgba(80,220,130,.58),
+        0 1px 0 rgba(35,35,35,.72),
+        0 2px 2px rgba(0,0,0,.44),
+        0 3px 4px rgba(0,0,0,.24);
+}
+.piece.black.engine-move-glow {
+    text-shadow:
+        0 0 5px rgba(180,255,210,.90),
+        0 0 12px rgba(80,220,130,.55),
+        0 1px 0 rgba(255,255,255,.25),
+        0 3px 4px rgba(0,0,0,.25);
+}
+@keyframes engineMoveGlow {
+    0% { transform:scale(1); filter:brightness(1); }
+    25% { transform:scale(1.045); filter:brightness(1.24); }
+    100% { transform:scale(1); filter:brightness(1); }
+}
 .piece.white.player-start-glow {
     text-shadow:
         0 0 6px rgba(255,255,255,1),
@@ -1236,7 +1259,7 @@ const files=["a","b","c","d","e","f","g","h"], ranks=["8","7","6","5","4","3","2
 let chess=null, playerColor="white", playerChar="w", currentFen="", currentToken=null, currentRoundNumber=1, currentTotalRounds=10, learningMode=false;
 let learningFeedbackMessage="", learningFeedbackResult="", learningGoodSquare="", learningPieceNote="", learningPurposeNotes=[];
 let learningExpectedMoves=[], learningOffbookMessage="Overruling decision made. The engine will answer — call the War Room if it gets dangerous.", learningOffbookMode=false, learningPendingOverruleMove="";
-let selectedSquare=null, draggedFrom=null, premoveQueue=[], visualPieces=null, showPlayerStartGlow=false, playerGlowTimer=null, roundEnded=false, lossOverlayVisible=false, dismissedLossToken=null, positionTimeline=[], timelineIndex=0, browsingTimeline=false, previewMode=false, pendingPromotion=null, countdownActive=false, countdownTimer=null, playerHasMovedThisRound=false, lastDragClientX=0, lastDragClientY=0, lastDragHoverSquare=null, lastMoveFrom=null, lastMoveTo=null;
+let selectedSquare=null, draggedFrom=null, premoveQueue=[], visualPieces=null, showPlayerStartGlow=false, playerGlowTimer=null, engineGlowSquare=null, engineGlowTimer=null, roundEnded=false, lossOverlayVisible=false, dismissedLossToken=null, positionTimeline=[], timelineIndex=0, browsingTimeline=false, previewMode=false, pendingPromotion=null, countdownActive=false, countdownTimer=null, playerHasMovedThisRound=false, lastDragClientX=0, lastDragClientY=0, lastDragHoverSquare=null, lastMoveFrom=null, lastMoveTo=null;
 let timerInterval=null, remainingMs=10000, lastTickMs=Date.now(), timerTimeoutSent=false, currentTimerInitialSeconds=10, currentTimerIncrementSeconds=0, timerIncrementMs=0;const PREMOVE_PENALTY_MS=100;
 let engineWorker=null, engineReady=false, engineThinking=false, engineFallback=true, engineMoveTimeMs=1500;
 let currentStockfishElo=800, currentStockfishSkill=0, lastEngineStatusPayload="";
@@ -1538,6 +1561,7 @@ function recordTimeline(){
 }
 function navigateMove(dir){
     if(!positionTimeline.length||engineThinking)return;
+    clearEngineMoveGlow();
     const max=positionTimeline.length-1;
     const next=Math.max(0,Math.min(max,timelineIndex+dir));
     if(next===timelineIndex)return;
@@ -2209,7 +2233,7 @@ function suspendPremoveQueue(message){
         setTimeout(()=>startEngineMove(),60);
     }
 }
-function makePlayerMove(from,to,promotion="q"){const uci=legalUci(from,to,promotion);if(!uci)return false;const move=chess.move({from:from,to:to,promotion:promotion});if(!move)return false;setLastMove(from,to);playerHasMovedThisRound=true;recordTimeline();playMoveOrCheckSound();addMoveIncrement();premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;buildBoard(true);updateStatus();checkRoundEnd();if(learningMode){
+function makePlayerMove(from,to,promotion="q"){clearEngineMoveGlow();const uci=legalUci(from,to,promotion);if(!uci)return false;const move=chess.move({from:from,to:to,promotion:promotion});if(!move)return false;setLastMove(from,to);playerHasMovedThisRound=true;recordTimeline();playMoveOrCheckSound();addMoveIncrement();premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;buildBoard(true);updateStatus();checkRoundEnd();if(learningMode){
     if(learningOffbookMode||!isWarRoomPlannedMove(uci)){
         learningPendingOverruleMove=uci;
         showLocalOffbookMessage();
@@ -2276,6 +2300,32 @@ function tryExecutePremoveChain(){
 function setLastMove(from,to){
     lastMoveFrom=from||null;
     lastMoveTo=to||null;
+}
+function triggerEngineMoveGlow(square){
+    engineGlowSquare=square||null;
+
+    if(engineGlowTimer){
+        clearTimeout(engineGlowTimer);
+        engineGlowTimer=null;
+    }
+
+    if(!engineGlowSquare)return;
+
+    engineGlowTimer=setTimeout(()=>{
+        engineGlowSquare=null;
+        engineGlowTimer=null;
+        if(!customPieceDragActive&&!draggedFrom){
+            buildBoard(false);
+        }
+    },850);
+}
+function clearEngineMoveGlow(){
+    engineGlowSquare=null;
+
+    if(engineGlowTimer){
+        clearTimeout(engineGlowTimer);
+        engineGlowTimer=null;
+    }
 }
 function isPieceDraggableNow(piece){
     if(!piece||countdownActive||!chess||chess.game_over())return false;
@@ -2645,6 +2695,7 @@ function applyEngineMoveUci(uci){
         setLastMove(from,to);
         recordTimeline();
         playMoveOrCheckSound();
+        triggerEngineMoveGlow(to);
     }
 
     // If a browser drag got stale during a redraw, do not let that stale held state
@@ -2855,7 +2906,7 @@ function buildBoard(resetSelection=true){
         ev.preventDefault();
         return false;
     };
-    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");const purposeNoteForSquare=learningPurposeNoteForSquare(sq);if(learningMode&&purposeNoteForSquare)square.classList.add("learning-good-square");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}if(learningMode&&purposeNoteForSquare){const note=document.createElement("div");note.className="piece-purpose-note";if(parseInt(rank,10)>=6)note.classList.add("down");note.textContent=purposeNoteForSquare;square.appendChild(note)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
+    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");const purposeNoteForSquare=learningPurposeNoteForSquare(sq);if(learningMode&&purposeNoteForSquare)square.classList.add("learning-good-square");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");if(!browsingTimeline&&engineGlowSquare&&sq===engineGlowSquare)pe.classList.add("engine-move-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}if(learningMode&&purposeNoteForSquare){const note=document.createElement("div");note.className="piece-purpose-note";if(parseInt(rank,10)>=6)note.classList.add("down");note.textContent=purposeNoteForSquare;square.appendChild(note)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
 const reviewButton=document.getElementById("reviewBoardButton");if(reviewButton)reviewButton.onclick=(ev)=>{ev.preventDefault();hideLossOverlay()};
 const lossTenRoundButton=document.getElementById("lossTenRoundButton");if(lossTenRoundButton)lossTenRoundButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("ten_round")};
 const lossUnlimitedButton=document.getElementById("lossUnlimitedButton");if(lossUnlimitedButton)lossUnlimitedButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("unlimited")};
@@ -2868,7 +2919,7 @@ const cancelPromotionButton=document.getElementById("cancelPromotionButton");if(
 if(pendingPromotion){positionPromotionPanel(pendingPromotion.to);}
 updateMoveNavStatus();
 setFrameHeight(790);restoreParentScroll()}
-function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;learningMode=args.learning_mode===true;learningFeedbackMessage=args.learning_feedback_message||"";learningFeedbackResult=args.learning_feedback_result||"";learningGoodSquare=args.learning_good_square||"";learningPieceNote=args.learning_piece_note||"";learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;learningOffbookMode=false;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=learningMode?("War Room — White"):(previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White")));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();if(learningMode){showPlayerStartGlow=false;if(playerGlowTimer){clearTimeout(playerGlowTimer);playerGlowTimer=null}}else{showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000)}currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();updateLearningBoardFeedback();buildBoard(true);if(previewMode){updateStatus(learningMode?"War Room Academy — choose or play the plan.":"Ready board — choose 10-round or unlimited.");return}
+function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;learningMode=args.learning_mode===true;learningFeedbackMessage=args.learning_feedback_message||"";learningFeedbackResult=args.learning_feedback_result||"";learningGoodSquare=args.learning_good_square||"";learningPieceNote=args.learning_piece_note||"";learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;learningOffbookMode=false;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=learningMode?("War Room — White"):(previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White")));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;clearEngineMoveGlow();setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();if(learningMode){showPlayerStartGlow=false;if(playerGlowTimer){clearTimeout(playerGlowTimer);playerGlowTimer=null}}else{showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000)}currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();updateLearningBoardFeedback();buildBoard(true);if(previewMode){updateStatus(learningMode?"War Room Academy — choose or play the plan.":"Ready board — choose 10-round or unlimited.");return}
 const shouldCountdown=currentRoundNumber===1;
 if(shouldCountdown){
     startRoundCountdown(()=>{startTimer(currentTimerInitialSeconds);updateStatus();if(isEngineTurn())setTimeout(()=>startEngineMove(),250)});
@@ -2957,8 +3008,21 @@ document.addEventListener("dragover",ev=>{rememberDragPoint(ev);squareFromClient
 document.addEventListener("drop",ev=>{rememberDragPoint(ev);finishDragAtPoint(ev)});
 document.addEventListener("dragend",ev=>finishDragAtPoint(ev));
 document.addEventListener("keydown",ev=>{
-    if(ev.key==="ArrowLeft"){ev.preventDefault();navigateMove(-1)}
-    if(ev.key==="ArrowRight"){ev.preventDefault();navigateMove(1)}
+    const tag=(ev.target&&ev.target.tagName?ev.target.tagName.toLowerCase():"");
+
+    if(tag==="input"||tag==="textarea"||tag==="select"||ev.target?.isContentEditable){
+        return;
+    }
+
+    if(ev.key==="ArrowLeft"||ev.key==="Backspace"||ev.code==="BrowserBack"){
+        ev.preventDefault();
+        navigateMove(-1);
+    }
+
+    if(ev.key==="ArrowRight"||ev.code==="BrowserForward"){
+        ev.preventDefault();
+        navigateMove(1);
+    }
 });
 initStockfishWorker();setComponentReady();setFrameHeight(790);
 </script>
@@ -3087,6 +3151,8 @@ def is_master_tournament_mode():
 # War Room off-book fix: legal moves outside the plan stay inside the browser board, engine replies, and pieces never jump back/reload.
 # War Room smoothness fix: no board rebuild/dim at engine-thinking start; only the actual engine move redraws.
 # War Room recovery: overrules now generate adaptive choices to repair or improve the London position.
+# History/glow update: Backspace/ArrowLeft reviews move history; engine destination piece gets a brief subtle glow.
+# Header cleanup: removed old browser-owned chessboard subtitle from the title banner.
 
 def mode_label():
     if is_unlimited_mode():
@@ -5392,7 +5458,7 @@ st.markdown(
         <div class="gauntlet-icon">♟</div>
         <div class="gauntlet-copy">
             <div class="gauntlet-title">Endgame Gauntlet</div>
-            <div class="gauntlet-subtitle">Browser-owned chessboard: set the premove window higher if the engine replies too fast.</div>
+            <div class="gauntlet-subtitle"></div>
         </div>
     </div>
     """,
