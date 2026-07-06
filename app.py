@@ -34,6 +34,7 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 # Material UI: bottom capture row shows player material +/- and black captured pieces are brighter.
 # Board annotation UI: right-click drag draws smooth green arrows; knight arrows draw as L-shapes.
 # Drag cursor fix: custom piece drag replaces native browser drag, so the grabbing-hand cursor stays visible.
+# Premove cancel fix: right-click anywhere cancels queued premoves and restores the real board.
 # Master Tournament loader fix: shared normalize_positions helper added.
 # Loss overlay fix: Master Tournament restart option added.
 # Draw rule fix: draws now count as losses and show the restart menu.
@@ -1047,7 +1048,7 @@ body.dragging-piece *,
   </div>
   <div class="capture-row bottom"><div id="capturedBottom" class="capture-strip"></div><div id="materialScore" class="material-score even">0</div><div id="timerDisplay" class="timer">0:10.0</div></div>
   <div id="premoveStatus" class="premove-status"></div>
-  <div class="message">Premove challenge. Right-click drag to draw green arrows. Right-click once to mark a square red. Left-click anywhere to clear annotations.</div>
+  <div class="message">Premove challenge. Right-click cancels queued premoves first. If no premove is queued, right-click drag draws arrows and right-click once marks red.</div>
   <div class="buttons"><button id="soundTestButton">Test move sound</button><button id="clearPremoveButton">Clear premoves</button></div>
   <div class="move-nav">
     <button id="prevMoveButton" title="Previous move">←</button>
@@ -1650,6 +1651,10 @@ function clearMoveArrows(){
 function beginBoardArrow(square,ev){
     if(!square||!ev||ev.button!==2)return false;
 
+    if(cancelPremovePlanFromRightClick(ev)){
+        return true;
+    }
+
     // Chess.com-style: right-click hold/drag from ANY square, piece, or empty square.
     ev.preventDefault();
     ev.stopPropagation();
@@ -1897,6 +1902,57 @@ function clearPremoves(){
     buildBoard(false);
     const st=document.getElementById("premoveStatus");
     if(st)st.textContent="Premoves cleared.";
+}
+function hasActivePremovePlan(){
+    return !!(
+        premoveQueue.length ||
+        visualPieces ||
+        pendingPromotion ||
+        selectedSquare ||
+        draggedFrom ||
+        customPieceDragActive
+    );
+}
+function cancelPremovePlan(message="Premoves cancelled."){
+    if(!hasActivePremovePlan())return false;
+
+    premoveQueue=[];
+    visualPieces=null;
+    selectedSquare=null;
+    draggedFrom=null;
+    lastDragHoverSquare=null;
+    pendingPromotion=null;
+
+    if(customPieceDragActive){
+        cleanupCustomPieceDrag();
+    }else{
+        removeCustomPieceGhost();
+        setDraggingCursor(false);
+        clearDragHover();
+    }
+
+    hidePromotionPicker();
+    clearHighlights();
+    renderPremoveHighlights();
+
+    // This restores the board to the true current chess position before queued premoves.
+    buildBoard(true);
+
+    const st=document.getElementById("premoveStatus");
+    if(st)st.textContent=message;
+
+    return true;
+}
+function cancelPremovePlanFromRightClick(ev){
+    if(!hasActivePremovePlan())return false;
+
+    if(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+    }
+
+    cancelPremovePlan("Premoves cancelled.");
+    return true;
 }
 function highlightFrom(square){clearHighlights();const se=document.querySelector(`[data-square="${square}"]`);if(se)se.classList.add("selected");const map=pieceMapFromChess(chess);legalTargets(square).forEach(t=>{const te=document.querySelector(`[data-square="${t}"]`);if(!te)return;if(map[t])te.classList.add("legal-capture");else te.classList.add("legal-empty")});renderPremoveHighlights()}
 function suspendPremoveQueue(message){
@@ -2528,10 +2584,11 @@ function findKingSquare(color,game=chess){const map=pieceMapFromChess(game);for(
 function buildBoard(resetSelection=true){
     const boardEl=document.getElementById("board");
     boardEl.oncontextmenu=(ev)=>{
+        if(cancelPremovePlanFromRightClick(ev))return false;
         ev.preventDefault();
         return false;
     };
-    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}square.addEventListener("contextmenu",ev=>{ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
+    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
 const reviewButton=document.getElementById("reviewBoardButton");if(reviewButton)reviewButton.onclick=(ev)=>{ev.preventDefault();hideLossOverlay()};
 const lossTenRoundButton=document.getElementById("lossTenRoundButton");if(lossTenRoundButton)lossTenRoundButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("ten_round")};
 const lossUnlimitedButton=document.getElementById("lossUnlimitedButton");if(lossUnlimitedButton)lossUnlimitedButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("unlimited")};
@@ -2589,6 +2646,8 @@ window.addEventListener("message",event=>{
 });
 document.addEventListener("pointerdown",unlockAudio);document.addEventListener("click",unlockAudio);
 document.addEventListener("contextmenu",ev=>{
+    if(cancelPremovePlanFromRightClick(ev))return false;
+
     if(ev.target.closest("#board")){
         ev.preventDefault();
         ev.stopPropagation();
@@ -2597,6 +2656,10 @@ document.addEventListener("contextmenu",ev=>{
 });
 document.addEventListener("mousemove",ev=>{updateBoardArrow(ev);updateCustomPieceDrag(ev)});
 document.addEventListener("mousedown",ev=>{
+    if(ev.button===2&&cancelPremovePlanFromRightClick(ev)){
+        return;
+    }
+
     if(ev.button===0&&!ev.target.closest("#board")){
         clearBoardAnnotations();
     }
