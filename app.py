@@ -55,6 +55,62 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 
 st.markdown("""
 <style>
+
+/* Hide Streamlit Cloud / GitHub / app-owner chrome */
+#MainMenu,
+footer,
+header[data-testid="stHeader"],
+[data-testid="stHeader"],
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"],
+[data-testid="stDeployButton"],
+[data-testid="stAppDeployButton"],
+[data-testid="stActionButtonIcon"],
+[data-testid="stBaseButton-header"],
+[data-testid="stBaseButton-headerNoPadding"],
+.stDeployButton,
+div[class*="stToolbar"],
+div[class*="stStatusWidget"],
+div[class*="viewerBadge"],
+div[class*="ViewerBadge"],
+div[class*="manageApp"],
+div[class*="ManageApp"],
+div[class*="appCreator"],
+div[class*="AppCreator"],
+button[title="View app source"],
+button[title="View source"],
+button[title="Share"],
+button[title="Fork"],
+button[aria-label="Share"],
+button[aria-label="Fork"],
+button[aria-label="View source"],
+button[aria-label="Main menu"],
+button[aria-label="Manage app"],
+a[title="View source"],
+a[title="Fork"],
+a[aria-label="GitHub"],
+a[href*="github.com"][target="_blank"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    max-width: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Remove extra reserved space left by Streamlit's header. */
+.block-container {
+    padding-top: 1.2rem !important;
+}
+
+.stApp {
+    margin-top: 0 !important;
+}
+
 .side-shell{
     background:linear-gradient(180deg, rgba(35,49,68,.78), rgba(25,38,56,.86));
     border:1px solid rgba(173,190,255,.14);
@@ -3153,6 +3209,7 @@ def is_master_tournament_mode():
 # War Room recovery: overrules now generate adaptive choices to repair or improve the London position.
 # History/glow update: Backspace/ArrowLeft reviews move history; engine destination piece gets a brief subtle glow.
 # Header cleanup: removed old browser-owned chessboard subtitle from the title banner.
+# Streamlit chrome cleanup: hide Share/Fork/GitHub/Manage App toolbar elements.
 
 def mode_label():
     if is_unlimited_mode():
