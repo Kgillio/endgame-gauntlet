@@ -37,6 +37,9 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 # Premove cancel fix: right-click anywhere cancels queued premoves and restores the real board.
 # Premove badge cleanup: queued premoves no longer show small number circles.
 # Arrow calculation fix: pawn arrows can point to both diagonal attack squares even if empty.
+# Pawn arrow back fix: pawn arrows can also point one square backward for calculation.
+# Calculation arrow freedom fix: arrows follow piece geometry but ignore blockers/friendly pieces.
+# Chained arrow fix: arrows remember piece type, so a knight remains a knight from its arrowed destination.
 # Master Tournament loader fix: shared normalize_positions helper added.
 # Loss overlay fix: Master Tournament restart option added.
 # Draw rule fix: draws now count as losses and show the restart menu.
@@ -1438,43 +1441,65 @@ function squareOnlyFromClientPoint(x,y){
     const sqEl=el.closest ? el.closest(".square") : null;
     return sqEl&&sqEl.dataset.square ? sqEl.dataset.square : null;
 }
-function annotationPieceType(square){
+function annotationPieceInfo(square){
     const map=currentPiecesForDisplay ? currentPiecesForDisplay() : {};
-    const p=map&&map[square] ? map[square] : (pieceMapFromChess(chess)[square]||null);
+    const realPiece=map&&map[square] ? map[square] : (pieceMapFromChess(chess)[square]||null);
+
+    if(realPiece){
+        return {
+            type:String(realPiece.type||"").toLowerCase(),
+            colorChar:realPiece.colorChar||((realPiece.color==="white")?"w":"b")
+        };
+    }
+
+    // If an arrow already "moved" a piece to this square, future arrows from this
+    // square should behave like that same piece. This makes chained knight arrows
+    // stay L-shaped for calculation/premove planning.
+    for(let i=drawnArrows.length-1;i>=0;i--){
+        const arrow=drawnArrows[i];
+
+        if(arrow&&arrow.to===square&&(arrow.pieceType||arrow.knight)){
+            return {
+                type:arrow.pieceType || (arrow.knight ? "n" : ""),
+                colorChar:arrow.pieceColor || playerChar || "w"
+            };
+        }
+    }
+
+    return null;
+}
+function annotationPieceType(square){
+    const p=annotationPieceInfo(square);
     return p ? String(p.type||"").toLowerCase() : "";
 }
 function annotationTargets(square){
-    const map=currentPiecesForDisplay ? currentPiecesForDisplay() : pieceMapFromChess(chess);
-    const p=map&&map[square] ? map[square] : null;
+    const p=annotationPieceInfo(square);
     if(!p)return null;
 
     const out=[];
     const seen=new Set();
     const start=squareFR(square);
 
-    function addTarget(f,r){
+    function addSquare(f,r){
         const sq=squareFromFR(f,r);
-        if(!sq||sq===square)return false;
-        const occ=map[sq]||null;
-        if(occ&&occ.colorChar===p.colorChar)return false;
+        if(!sq||sq===square)return;
         if(!seen.has(sq)){
             out.push(sq);
             seen.add(sq);
         }
-        return !occ;
     }
-    function ray(df,dr){
+
+    // Calculation arrows should show the geometry of the piece, not whether a
+    // real move is currently blocked. This lets you draw through pieces for plans.
+    function rayThroughPieces(df,dr){
         let f=start.f+df, r=start.r+dr;
         while(true){
             const sq=squareFromFR(f,r);
             if(!sq)break;
-            const occ=map[sq]||null;
-            if(occ&&occ.colorChar===p.colorChar)break;
             if(!seen.has(sq)){
                 out.push(sq);
                 seen.add(sq);
             }
-            if(occ)break;
             f+=df;
             r+=dr;
         }
@@ -1483,38 +1508,32 @@ function annotationTargets(square){
     if(p.type==='p'){
         const dir=p.colorChar==='w'?1:-1;
         const startRank=p.colorChar==='w'?2:7;
-        const one=squareFromFR(start.f,start.r+dir);
 
-        // Pawn forward arrows still follow normal movement rules.
-        if(one&&!map[one]){
-            out.push(one); seen.add(one);
-            const two=squareFromFR(start.f,start.r+(2*dir));
-            if(start.r===startRank&&two&&!map[two]){ out.push(two); seen.add(two); }
+        // Pawn arrows are for calculation:
+        // forward, backward, and both diagonal sides. No blocker requirement.
+        addSquare(start.f,start.r+dir);
+        addSquare(start.f,start.r-dir);
+
+        if(start.r===startRank){
+            addSquare(start.f,start.r+(2*dir));
         }
 
-        // Pawn diagonal arrows are calculation/attack arrows.
-        // Allow both diagonal attack squares even when no piece is currently there,
-        // so you can mark future captures/threats on either side.
-        [[-1,dir],[1,dir]].forEach(([df,dr])=>{
-            const sq=squareFromFR(start.f+df,start.r+dr);
-            if(sq&&!seen.has(sq)){
-                out.push(sq);
-                seen.add(sq);
-            }
+        [[-1,dir],[1,dir],[-1,-dir],[1,-dir]].forEach(([df,dr])=>{
+            addSquare(start.f+df,start.r+dr);
         });
     }else if(p.type==='n'){
-        [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]].forEach(([df,dr])=>addTarget(start.f+df,start.r+dr));
+        [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]].forEach(([df,dr])=>addSquare(start.f+df,start.r+dr));
     }else if(p.type==='b'){
-        [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([df,dr])=>ray(df,dr));
+        [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([df,dr])=>rayThroughPieces(df,dr));
     }else if(p.type==='r'){
-        [[1,0],[-1,0],[0,1],[0,-1]].forEach(([df,dr])=>ray(df,dr));
+        [[1,0],[-1,0],[0,1],[0,-1]].forEach(([df,dr])=>rayThroughPieces(df,dr));
     }else if(p.type==='q'){
-        [[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]].forEach(([df,dr])=>ray(df,dr));
+        [[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]].forEach(([df,dr])=>rayThroughPieces(df,dr));
     }else if(p.type==='k'){
         for(let df=-1;df<=1;df++){
             for(let dr=-1;dr<=1;dr++){
                 if(df===0&&dr===0)continue;
-                addTarget(start.f+df,start.r+dr);
+                addSquare(start.f+df,start.r+dr);
             }
         }
     }
@@ -1702,6 +1721,7 @@ function finishBoardArrow(ev){
     }
 
     const from=arrowDraftFrom;
+    const movingPiece=annotationPieceInfo(from);
     const allowed=annotationTargetSet(from);
     const rawTo=squareOnlyFromClientPoint(ev.clientX,ev.clientY)||arrowDraftTo;
     const to=(allowed&&rawTo&&rawTo!==from&&!allowed.has(rawTo)) ? null : rawTo;
@@ -1727,7 +1747,13 @@ function finishBoardArrow(ev){
     if(existingIndex>=0){
         drawnArrows.splice(existingIndex,1);
     }else{
-        drawnArrows.push({from:from,to:to,knight:isKnight});
+        drawnArrows.push({
+            from:from,
+            to:to,
+            knight:isKnight,
+            pieceType:movingPiece ? movingPiece.type : "",
+            pieceColor:movingPiece ? movingPiece.colorChar : ""
+        });
     }
 
     renderUserArrows();
