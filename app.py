@@ -35,6 +35,8 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 # Board annotation UI: right-click drag draws smooth green arrows; knight arrows draw as L-shapes.
 # Drag cursor fix: custom piece drag replaces native browser drag, so the grabbing-hand cursor stays visible.
 # Premove cancel fix: right-click anywhere cancels queued premoves and restores the real board.
+# Premove badge cleanup: queued premoves no longer show small number circles.
+# Arrow calculation fix: pawn arrows can point to both diagonal attack squares even if empty.
 # Master Tournament loader fix: shared normalize_positions helper added.
 # Loss overlay fix: Master Tournament restart option added.
 # Draw rule fix: draws now count as losses and show the restart menu.
@@ -701,7 +703,7 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
 .square.premove-to{box-shadow:inset 0 0 0 999px rgba(255,51,82,.36),inset 0 0 0 5px rgba(255,51,82,.95)}
 .square.premove-chain{box-shadow:inset 0 0 0 999px rgba(255,51,82,.22)}
 .square.premove-to::before{content:"";width:42px;height:46px;border-radius:50%;border:5px solid rgba(255,51,82,.95);background:rgba(255,51,82,.12);position:absolute;z-index:4;pointer-events:none}
-.badge{position:absolute;top:4px;right:5px;background:rgba(255,51,82,.95);color:white;border-radius:999px;padding:3px 7px;font-size:13px;font-weight:900;z-index:12;box-shadow:0 2px 5px rgba(0,0,0,.28)}
+.badge{display:none!important}
 .timer{color:#fff;font-size:36px;font-weight:900;line-height:1;letter-spacing:1px;min-width:130px;text-align:right;font-variant-numeric:tabular-nums;text-shadow:0 1px 0 rgba(0,0,0,.35),0 3px 8px rgba(0,0,0,.45)}
 .premove-status{
     visibility:hidden !important;
@@ -1482,15 +1484,20 @@ function annotationTargets(square){
         const dir=p.colorChar==='w'?1:-1;
         const startRank=p.colorChar==='w'?2:7;
         const one=squareFromFR(start.f,start.r+dir);
+
+        // Pawn forward arrows still follow normal movement rules.
         if(one&&!map[one]){
             out.push(one); seen.add(one);
             const two=squareFromFR(start.f,start.r+(2*dir));
             if(start.r===startRank&&two&&!map[two]){ out.push(two); seen.add(two); }
         }
+
+        // Pawn diagonal arrows are calculation/attack arrows.
+        // Allow both diagonal attack squares even when no piece is currently there,
+        // so you can mark future captures/threats on either side.
         [[-1,dir],[1,dir]].forEach(([df,dr])=>{
             const sq=squareFromFR(start.f+df,start.r+dr);
-            const occ=sq?map[sq]:null;
-            if(sq&&occ&&occ.colorChar!==p.colorChar&&!seen.has(sq)){
+            if(sq&&!seen.has(sq)){
                 out.push(sq);
                 seen.add(sq);
             }
@@ -1771,7 +1778,7 @@ function restoreHeldMoveDots(){
         }
     }
 }
-function renderPremoveHighlights(){document.querySelectorAll(".square").forEach(s=>{s.classList.remove("premove-from","premove-to","premove-chain");const b=s.querySelector(".badge");if(b)b.remove()});premoveQueue.forEach((uci,i)=>{const from=uci.slice(0,2),to=uci.slice(2,4),fe=document.querySelector(`[data-square="${from}"]`),te=document.querySelector(`[data-square="${to}"]`);if(fe)fe.classList.add(i===0?"premove-from":"premove-chain");if(te){te.classList.add("premove-to");const b=document.createElement("div");b.className="badge";b.textContent=(i+1).toString();te.appendChild(b)}});const st=document.getElementById("premoveStatus");if(st){if(premoveQueue.length)st.textContent="Premove queued ("+premoveQueue.length+"/14, -0.1s each): "+premoveQueue.join(" • ");else if(engineThinking||isEngineTurn())st.textContent="Engine thinking — premove now.";else st.textContent=""}}
+function renderPremoveHighlights(){document.querySelectorAll(".square").forEach(s=>{s.classList.remove("premove-from","premove-to","premove-chain");const b=s.querySelector(".badge");if(b)b.remove()});premoveQueue.forEach((uci,i)=>{const from=uci.slice(0,2),to=uci.slice(2,4),fe=document.querySelector(`[data-square="${from}"]`),te=document.querySelector(`[data-square="${to}"]`);if(fe)fe.classList.add(i===0?"premove-from":"premove-chain");if(te)te.classList.add("premove-to")});const st=document.getElementById("premoveStatus");if(st){if(premoveQueue.length)st.textContent="Premove queued ("+premoveQueue.length+"/14, -0.1s each): "+premoveQueue.join(" • ");else if(engineThinking||isEngineTurn())st.textContent="Engine thinking — premove now.";else st.textContent=""}}
 function isRealPromotionMove(from,to){
     if(!chess)return false;
     for(const m of chess.moves({square:from,verbose:true})){
