@@ -56,6 +56,92 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 st.markdown("""
 <style>
 
+.mode-intro-card {
+    border-radius: 26px;
+    padding: 24px 26px 22px;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(139,92,246,.22), transparent 36%),
+        linear-gradient(180deg, rgba(8,18,36,.98), rgba(4,11,25,.98));
+    border: 1px solid rgba(255,184,84,.80);
+    box-shadow:
+        0 28px 90px rgba(0,0,0,.55),
+        0 0 0 1px rgba(255,255,255,.06) inset,
+        0 0 28px rgba(255,132,0,.16);
+    text-align: center;
+    color: #f8fbff;
+}
+.mode-intro-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 12px;
+    border-radius: 22px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:42px;
+    background:linear-gradient(180deg, rgba(255,132,0,.22), rgba(124,58,237,.22));
+    border:1px solid rgba(255,184,84,.45);
+    box-shadow:0 14px 32px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.10);
+}
+.mode-intro-kicker {
+    font-size: 12px;
+    font-weight: 1000;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #ffb454;
+    margin-bottom: 7px;
+}
+.mode-intro-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #fff3d7;
+    font-size: 32px;
+    line-height: 1.1;
+    font-weight: 1000;
+    margin-bottom: 9px;
+}
+.mode-intro-text {
+    color: #dbeafe;
+    font-size: 16px;
+    line-height: 1.42;
+    max-width: 560px;
+    margin: 0 auto 16px;
+}
+.mode-intro-rules {
+    margin: 18px auto 6px;
+    max-width: 540px;
+    text-align: left;
+    color: #eef6ff;
+    font-weight: 850;
+    font-size: 14px;
+}
+.mode-intro-rule {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin: 9px 0;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.09);
+}
+.mode-intro-rule span:first-child {
+    color:#ffb454;
+    font-size:16px;
+}
+.mode-intro-warning {
+    margin: 15px auto 0;
+    max-width: 540px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(255,91,118,.10);
+    border: 1px solid rgba(255,91,118,.28);
+    color: #ffe5eb;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+
 /* Hide Streamlit Cloud / GitHub / app-owner chrome */
 #MainMenu,
 footer,
@@ -3210,6 +3296,7 @@ def is_master_tournament_mode():
 # History/glow update: Backspace/ArrowLeft reviews move history; engine destination piece gets a brief subtle glow.
 # Header cleanup: removed old browser-owned chessboard subtitle from the title banner.
 # Streamlit chrome cleanup: hide Share/Fork/GitHub/Manage App toolbar elements.
+# Mode intro modal: each game mode shows its own one-time briefing with Don't show again.
 
 def mode_label():
     if is_unlimited_mode():
@@ -3401,6 +3488,15 @@ def init_state():
         "learning_override_active": False,
         "learning_override_step": None,
         "learning_override_reason": "",
+
+        # First-click game mode intro modal
+        "mode_intro_seen": False,  # legacy fallback
+        "mode_intro_disabled": False,  # legacy fallback
+        "mode_intro_seen_modes": [],
+        "mode_intro_disabled_modes": [],
+        "mode_intro_open": False,
+        "mode_intro_pending_mode": "",
+        "mode_intro_pending_learning_path": "opening",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -5522,8 +5618,198 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+MODE_INTRO_DATA = {
+    "ten_round": {
+        "icon": "⚔️",
+        "kicker": "Gauntlet Mode",
+        "title": "10-Round Game",
+        "text": "Get through 10 rounds against the world's top engines while you are up material, but fighting the clock.",
+        "rules": [
+            ("⏱️", "You start with low time and must convert fast."),
+            ("♟️", "Each round gives you a new odds matchup."),
+            ("🏆", "Survive all 10 rounds to climb the ladder."),
+        ],
+        "warning": "",
+        "button": "Enter 10-Round Game",
+    },
+    "unlimited": {
+        "icon": "∞",
+        "kicker": "Endless Gauntlet",
+        "title": "Unlimited Game",
+        "text": "Go unlimited against the world's top engines while you are up material, but down on time.",
+        "rules": [
+            ("♾️", "Keep surviving new positions for as long as you can."),
+            ("🔥", "The longer you last, the harder the run feels."),
+            ("📈", "Build streaks and chase a higher Premove Rating."),
+        ],
+        "warning": "",
+        "button": "Enter Unlimited Game",
+    },
+    "master_tournament": {
+        "icon": "♛",
+        "kicker": "Title Chase",
+        "title": "Master Tournament",
+        "text": "Close out endgames where you are up material against 10 masters to earn your norms and complete your master title.",
+        "rules": [
+            ("🎖️", "Beat 10 master-style conversion challenges."),
+            ("♜", "Convert endgames cleanly, not just quick mates."),
+            ("👑", "Complete the tournament to prove your title strength."),
+        ],
+        "warning": "",
+        "button": "Enter Master Tournament",
+    },
+    "learning": {
+        "icon": "🎓",
+        "kicker": "Story Mode",
+        "title": "War Room Academy",
+        "text": "Learn chess openings or battle in war with an army that helps you understand the correct moves.",
+        "rules": [
+            ("🧠", "Choose plans from story-based War Room decisions."),
+            ("♙", "You can also play the move directly on the board."),
+            ("🛡️", "The War Room adapts if you overrule the plan."),
+        ],
+        "warning": "Be aware: you can lose the war if you keep playing the wrong moves and never recover.",
+        "button": "Enter War Room Academy",
+    },
+}
+
+
+def execute_mode_start(mode, positions, master_tournament_positions, learning_path="opening"):
+    if mode == "ten_round":
+        start_game(positions, mode="ten_round")
+        return
+
+    if mode == "unlimited":
+        start_game(positions, mode="unlimited")
+        return
+
+    if mode == "master_tournament":
+        start_master_tournament(master_tournament_positions)
+        return
+
+    if mode == "learning":
+        start_learning_mode(learning_path or "opening")
+        return
+
+
+def mode_intro_has_been_seen(mode):
+    mode = str(mode or "")
+
+    seen_modes = st.session_state.get("mode_intro_seen_modes", [])
+    disabled_modes = st.session_state.get("mode_intro_disabled_modes", [])
+
+    return mode in seen_modes or mode in disabled_modes
+
+
+def mark_mode_intro_seen(mode, disabled=False):
+    mode = str(mode or "")
+
+    seen_modes = list(st.session_state.get("mode_intro_seen_modes", []))
+    disabled_modes = list(st.session_state.get("mode_intro_disabled_modes", []))
+
+    if mode and mode not in seen_modes:
+        seen_modes.append(mode)
+
+    if disabled and mode and mode not in disabled_modes:
+        disabled_modes.append(mode)
+
+    st.session_state.mode_intro_seen_modes = seen_modes
+    st.session_state.mode_intro_disabled_modes = disabled_modes
+
+
+def request_mode_start(mode, positions, master_tournament_positions, learning_path="opening"):
+    # Show the briefing once for EACH mode, not once total.
+    # Example: 10-Round can be seen already, but Unlimited should still show its own briefing.
+    if mode_intro_has_been_seen(mode):
+        execute_mode_start(mode, positions, master_tournament_positions, learning_path)
+        return
+
+    st.session_state.mode_intro_pending_mode = mode
+    st.session_state.mode_intro_pending_learning_path = learning_path or "opening"
+    st.session_state.mode_intro_open = True
+
+
+def finish_mode_intro_start(positions, master_tournament_positions, dont_show_again=False):
+    mode = st.session_state.get("mode_intro_pending_mode", "")
+    learning_path = st.session_state.get("mode_intro_pending_learning_path", "opening")
+
+    mark_mode_intro_seen(mode, disabled=dont_show_again)
+    st.session_state.mode_intro_seen = True  # legacy fallback
+    st.session_state.mode_intro_open = False
+
+    execute_mode_start(mode, positions, master_tournament_positions, learning_path)
+
+
+def render_mode_intro_contents(positions, master_tournament_positions):
+    mode = st.session_state.get("mode_intro_pending_mode", "ten_round")
+    info = MODE_INTRO_DATA.get(mode, MODE_INTRO_DATA["ten_round"])
+
+    rules_html = "".join(
+        f'<div class="mode-intro-rule"><span>{icon}</span><div>{text}</div></div>'
+        for icon, text in info.get("rules", [])
+    )
+    warning_html = (
+        f'<div class="mode-intro-warning">{info["warning"]}</div>'
+        if info.get("warning")
+        else ""
+    )
+
+    st.markdown(
+        f"""
+        <div class="mode-intro-card">
+            <div class="mode-intro-icon">{info['icon']}</div>
+            <div class="mode-intro-kicker">{info['kicker']}</div>
+            <div class="mode-intro-title">{info['title']}</div>
+            <div class="mode-intro-text">{info['text']}</div>
+            <div class="mode-intro-rules">{rules_html}</div>
+            {warning_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    dont_show = st.checkbox(
+        "Don't show this briefing again for this mode",
+        key=f"mode_intro_dont_show_again_{mode}",
+    )
+
+    col_start, col_cancel = st.columns([2, 1], gap="small")
+
+    with col_start:
+        if st.button(info.get("button", "Enter Mode"), type="primary", width="stretch"):
+            finish_mode_intro_start(
+                positions,
+                master_tournament_positions,
+                dont_show_again=dont_show,
+            )
+            st.rerun()
+
+    with col_cancel:
+        if st.button("Cancel", width="stretch"):
+            st.session_state.mode_intro_open = False
+            st.rerun()
+
+
+def render_mode_intro_modal(positions, master_tournament_positions):
+    if not st.session_state.get("mode_intro_open"):
+        return
+
+    if hasattr(st, "dialog"):
+        @st.dialog("Mode Briefing")
+        def _mode_briefing_dialog():
+            render_mode_intro_contents(positions, master_tournament_positions)
+
+        _mode_briefing_dialog()
+    else:
+        render_mode_intro_contents(positions, master_tournament_positions)
+
+
+
 positions = load_positions()
 master_tournament_positions = load_master_tournament_positions()
+
+render_mode_intro_modal(positions, master_tournament_positions)
 
 # Board + control panel sit side-by-side so players never have to scroll up for round controls.
 pos = current_position() or get_preview_position(positions)
@@ -5636,15 +5922,15 @@ with side_col:
     )
 
     if st.button("▶   Start 10-Round Game", width="stretch", type="primary"):
-        start_game(positions, mode="ten_round")
+        request_mode_start("ten_round", positions, master_tournament_positions)
         st.rerun()
 
     if st.button("▶   Start Unlimited Game", width="stretch", type="primary"):
-        start_game(positions, mode="unlimited")
+        request_mode_start("unlimited", positions, master_tournament_positions)
         st.rerun()
 
     if st.button("♛   Start Master Tournament", width="stretch", type="primary"):
-        start_master_tournament(master_tournament_positions)
+        request_mode_start("master_tournament", positions, master_tournament_positions)
         st.rerun()
 
     st.markdown(
@@ -5665,7 +5951,12 @@ with side_col:
     )
 
     if st.button("🎓   Start Learning Mode", width="stretch", type="primary"):
-        start_learning_mode("opening" if lesson_path.startswith("Opening") else "endgame")
+        request_mode_start(
+            "learning",
+            positions,
+            master_tournament_positions,
+            learning_path="opening" if lesson_path.startswith("Opening") else "endgame",
+        )
         st.rerun()
 
     if st.session_state.learning_active:
