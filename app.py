@@ -1,4 +1,5 @@
 import json
+import html
 import random
 import secrets
 import time
@@ -337,6 +338,8 @@ COMPONENT_DIR = BASE_DIR / "browser_chess_component"
 COMPONENT_FILE = COMPONENT_DIR / "index.html"
 TIME_INPUT_DIR = BASE_DIR / "instant_time_component"
 TIME_INPUT_FILE = TIME_INPUT_DIR / "index.html"
+AUTO_ADVANCE_DIR = BASE_DIR / "auto_advance_component"
+AUTO_ADVANCE_FILE = AUTO_ADVANCE_DIR / "index.html"
 
 DEFAULT_POSITIONS = [
     {"id":"rook_up_001","title":"Rook Up Endgame","opponent":"Master Defense Bot","year":"Sample","fen":"8/6k1/8/8/8/8/6K1/R7 w - - 0 1","player_color":"white","difficulty":1,"goal":"win","intro":"You are up a rook. Convert the endgame."},
@@ -494,6 +497,58 @@ setFrameHeight(82);
 </html>
 """
 
+
+AUTO_ADVANCE_HTML = r"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+</head>
+<body>
+<script>
+function sendMessageToStreamlit(type,data){
+    window.parent.postMessage(Object.assign({isStreamlitMessage:true,type:type},data),"*");
+}
+function setComponentReady(){
+    sendMessageToStreamlit("streamlit:componentReady",{apiVersion:1});
+}
+function setFrameHeight(height){
+    sendMessageToStreamlit("streamlit:setFrameHeight",{height:height});
+}
+function setComponentValue(value){
+    sendMessageToStreamlit("streamlit:setComponentValue",{value:value});
+}
+let lastToken="";
+window.addEventListener("message",event=>{
+    if(event.data.type!=="streamlit:render")return;
+    const args=event.data.args||{};
+    const token=String(args.token||"");
+    const delay=Number(args.delay_ms||850);
+
+    if(!token||token===lastToken){
+        setFrameHeight(0);
+        return;
+    }
+
+    lastToken=token;
+    setTimeout(()=>{
+        setComponentValue({
+            action:args.action||"learning_auto_next",
+            token:token,
+            nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
+        });
+    }, Math.max(150, delay));
+
+    setFrameHeight(0);
+});
+setComponentReady();
+setFrameHeight(0);
+</script>
+</body>
+</html>
+"""
+
+
 COMPONENT_HTML = r"""
 <!DOCTYPE html>
 <html>
@@ -620,6 +675,58 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
 .material-score.even {
     visibility:hidden;
 }
+.learning-board-feedback {
+    display:none;
+    width:410px;
+    max-width:410px;
+    min-height:58px;
+    margin:0 10px 0 0;
+    padding:9px 12px;
+    border-radius:14px;
+    align-items:flex-start;
+    justify-content:flex-start;
+    color:#eef6ff;
+    font-size:13px;
+    line-height:1.28;
+    font-weight:900;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(11,18,32,.58);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 8px 18px rgba(0,0,0,.20);
+    white-space:normal;
+    overflow:visible;
+}
+.learning-board-feedback.show {
+    display:flex;
+}
+.learning-board-feedback.good {
+    border-color:rgba(88,242,155,.42);
+    background:linear-gradient(180deg, rgba(88,242,155,.18), rgba(11,18,32,.72));
+    color:#eafff2;
+}
+.learning-board-feedback.bad {
+    border-color:rgba(255,91,118,.45);
+    background:linear-gradient(180deg, rgba(255,91,118,.18), rgba(11,18,32,.72));
+    color:#fff0f3;
+}
+.wrap.learning-mode .capture-row.bottom {
+    height:82px;
+    min-height:82px;
+    max-height:82px;
+    align-items:flex-start;
+    justify-content:space-between;
+    overflow:visible;
+}
+.wrap.learning-mode #capturedBottom,
+.wrap.learning-mode #materialScore {
+    display:none !important;
+}
+.wrap.learning-mode #timerDisplay {
+    margin-top:6px;
+    min-width:140px;
+}
+.wrap.learning-mode .learning-board-feedback {
+    display:flex;
+}
 .board { width:576px; height:576px; margin:0 auto; display:grid; grid-template-columns:repeat(8,72px); grid-template-rows:repeat(8,72px); border:1px solid rgba(0,0,0,.38); touch-action:none; position:relative; }
 .square { width:72px; height:72px; position:relative; display:flex; align-items:center; justify-content:center; }
 .light{background:#f0d9b5}.dark{background:#b58863}
@@ -702,6 +809,41 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
     opacity:.62;
 }
 .square.in-check { box-shadow:inset 0 0 0 5px #d64545; }
+.square.learning-good-square {
+    box-shadow:
+        inset 0 0 0 999px rgba(39, 174, 96, .24),
+        inset 0 0 0 4px rgba(52, 211, 153, .72);
+}
+.piece-purpose-note {
+    position:absolute;
+    left:50%;
+    bottom:calc(100% + 7px);
+    width:205px;
+    max-width:205px;
+    padding:8px 10px;
+    border-radius:12px;
+    background:rgba(8,15,30,.92);
+    border:1px solid rgba(52,211,153,.42);
+    color:#eafff2;
+    font-size:11px;
+    line-height:1.28;
+    font-weight:850;
+    text-align:left;
+    box-shadow:0 12px 28px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.08);
+    opacity:0;
+    transform:translate(-50%, 4px);
+    transition:opacity .12s ease, transform .12s ease;
+    pointer-events:none;
+    z-index:40;
+}
+.piece-purpose-note.down {
+    bottom:auto;
+    top:calc(100% + 7px);
+}
+.square.learning-good-square:hover .piece-purpose-note {
+    opacity:1;
+    transform:translate(-50%, 0);
+}
 .square.premove-from{box-shadow:inset 0 0 0 999px rgba(255,51,82,.18),inset 0 0 0 4px rgba(255,51,82,.88)}
 .square.premove-to{box-shadow:inset 0 0 0 999px rgba(255,51,82,.36),inset 0 0 0 5px rgba(255,51,82,.95)}
 .square.premove-chain{box-shadow:inset 0 0 0 999px rgba(255,51,82,.22)}
@@ -1040,7 +1182,7 @@ body.dragging-piece *,
 </style>
 </head>
 <body>
-<div class="wrap">
+<div id="gameWrap" class="wrap">
   <div class="top"><div id="roundBadge" class="pill">Round 1 / 10</div><div id="gameStatus">Loading board...</div><div id="engineStatus" class="pill">Engine loading...</div></div>
   <div class="capture-row"><div id="capturedTop" class="capture-strip"></div></div>
   <div id="board" class="board"></div>
@@ -1051,7 +1193,7 @@ body.dragging-piece *,
     <button data-promotion-piece="b" title="Bishop">♗</button>
     <button id="cancelPromotionButton" class="promotion-cancel" title="Cancel">×</button>
   </div>
-  <div class="capture-row bottom"><div id="capturedBottom" class="capture-strip"></div><div id="materialScore" class="material-score even">0</div><div id="timerDisplay" class="timer">0:10.0</div></div>
+  <div class="capture-row bottom"><div id="capturedBottom" class="capture-strip"></div><div id="learningBoardFeedback" class="learning-board-feedback"></div><div id="materialScore" class="material-score even">0</div><div id="timerDisplay" class="timer">0:10.0</div></div>
   <div id="premoveStatus" class="premove-status"></div>
   <div class="message">Premove challenge. Right-click cancels queued premoves first. If no premove is queued, right-click drag draws arrows and right-click once marks red.</div>
   <div class="buttons"><button id="soundTestButton">Test move sound</button><button id="clearPremoveButton">Clear premoves</button></div>
@@ -1091,7 +1233,9 @@ function setComponentValue(value){saveParentScroll();sendMessageToStreamlit("str
 
 const PIECES={P:"♟",N:"♞",B:"♝",R:"♜",Q:"♛",K:"♚",p:"♟",n:"♞",b:"♝",r:"♜",q:"♛",k:"♚"};
 const files=["a","b","c","d","e","f","g","h"], ranks=["8","7","6","5","4","3","2","1"];function displayFiles(){return playerChar==="b"?["h","g","f","e","d","c","b","a"]:files}function displayRanks(){return playerChar==="b"?["1","2","3","4","5","6","7","8"]:ranks}
-let chess=null, playerColor="white", playerChar="w", currentFen="", currentToken=null, currentRoundNumber=1, currentTotalRounds=10;
+let chess=null, playerColor="white", playerChar="w", currentFen="", currentToken=null, currentRoundNumber=1, currentTotalRounds=10, learningMode=false;
+let learningFeedbackMessage="", learningFeedbackResult="", learningGoodSquare="", learningPieceNote="", learningPurposeNotes=[];
+let learningExpectedMoves=[], learningOffbookMessage="Overruling decision made. The engine will answer — call the War Room if it gets dangerous.", learningOffbookMode=false, learningPendingOverruleMove="";
 let selectedSquare=null, draggedFrom=null, premoveQueue=[], visualPieces=null, showPlayerStartGlow=false, playerGlowTimer=null, roundEnded=false, lossOverlayVisible=false, dismissedLossToken=null, positionTimeline=[], timelineIndex=0, browsingTimeline=false, previewMode=false, pendingPromotion=null, countdownActive=false, countdownTimer=null, playerHasMovedThisRound=false, lastDragClientX=0, lastDragClientY=0, lastDragHoverSquare=null, lastMoveFrom=null, lastMoveTo=null;
 let timerInterval=null, remainingMs=10000, lastTickMs=Date.now(), timerTimeoutSent=false, currentTimerInitialSeconds=10, currentTimerIncrementSeconds=0, timerIncrementMs=0;const PREMOVE_PENALTY_MS=100;
 let engineWorker=null, engineReady=false, engineThinking=false, engineFallback=true, engineMoveTimeMs=1500;
@@ -1132,6 +1276,66 @@ function nameToColorChar(n){return n==="black"?"b":"w"}
 function isPlayerTurn(){return chess&&chess.turn()===playerChar&&!engineThinking&&!countdownActive}
 function isEngineTurn(){return chess&&chess.turn()!==playerChar&&!chess.game_over()&&!countdownActive}
 function unlockAudio(){try{const AC=window.AudioContext||window.webkitAudioContext;if(!audioCtx)audioCtx=new AC();if(audioCtx.state==="suspended")audioCtx.resume()}catch(e){}}
+function learningPurposeNoteForSquare(square){
+    if(!learningMode||!square)return "";
+
+    // Only one current lesson highlight at a time.
+    if(learningGoodSquare===square&&learningPieceNote)return learningPieceNote;
+
+    return "";
+}
+function isWarRoomPlannedMove(uci){
+    const move=String(uci||"").toLowerCase();
+
+    if(!move||move.length<4)return false;
+    if(!Array.isArray(learningExpectedMoves))return false;
+
+    return learningExpectedMoves.some(expected=>{
+        expected=String(expected||"").toLowerCase();
+
+        if(!expected)return false;
+
+        return move===expected||move.startsWith(expected);
+    });
+}
+function showLocalOffbookMessage(){
+    learningFeedbackMessage=learningOffbookMessage||"Overruling decision made. Call the War Room if it gets dangerous.";
+    learningFeedbackResult="";
+    learningGoodSquare="";
+    learningPieceNote="";
+    learningPurposeNotes=[];
+    learningOffbookMode=true;
+
+    // Keep the current board exactly as-is. Only update the small War Room message.
+    // Rebuilding here made the board look like it dimmed/reloaded.
+    updateLearningBoardFeedback();
+}
+function updateLearningBoardFeedback(){
+    const wrap=document.getElementById("gameWrap");
+    if(wrap)wrap.classList.toggle("learning-mode",learningMode);
+
+    const el=document.getElementById("learningBoardFeedback");
+    if(!el)return;
+
+    el.className="learning-board-feedback";
+
+    if(!learningMode){
+        el.textContent="";
+        return;
+    }
+
+    if(!learningFeedbackMessage){
+        el.textContent="Play the move on the board or choose the War Room answer.";
+        el.classList.add("show");
+        return;
+    }
+
+    el.textContent=learningFeedbackMessage;
+    el.classList.add("show");
+
+    if(learningFeedbackResult==="good")el.classList.add("good");
+    if(learningFeedbackResult==="bad")el.classList.add("bad");
+}
 function playMoveSound(){try{unlockAudio();if(!audioCtx||!soundEnabled)return;const now=audioCtx.currentTime;function knock(t,v,p){const dur=.075,bs=Math.floor(audioCtx.sampleRate*dur),buf=audioCtx.createBuffer(1,bs,audioCtx.sampleRate),data=buf.getChannelData(0);for(let i=0;i<bs;i++){const d=Math.pow(1-i/bs,4.5);data[i]=(Math.random()*2-1)*d}const noise=audioCtx.createBufferSource();noise.buffer=buf;const bp=audioCtx.createBiquadFilter();bp.type="bandpass";bp.frequency.setValueAtTime(p,t);bp.Q.setValueAtTime(7.5,t);const g=audioCtx.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+dur);noise.connect(bp);bp.connect(g);g.connect(audioCtx.destination);noise.start(t);noise.stop(t+dur)}knock(now,.42,950);knock(now+.045,.28,1350)}catch(e){}}
 function playCountdownBoop(text){
     try{
@@ -2005,7 +2209,23 @@ function suspendPremoveQueue(message){
         setTimeout(()=>startEngineMove(),60);
     }
 }
-function makePlayerMove(from,to,promotion="q"){const uci=legalUci(from,to,promotion);if(!uci)return false;const move=chess.move({from:from,to:to,promotion:promotion});if(!move)return false;setLastMove(from,to);playerHasMovedThisRound=true;recordTimeline();playMoveOrCheckSound();addMoveIncrement();premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;buildBoard(true);updateStatus();checkRoundEnd();if(!roundEnded&&!chess.game_over()&&chess.turn()!==playerChar)startEngineMove();return true}
+function makePlayerMove(from,to,promotion="q"){const uci=legalUci(from,to,promotion);if(!uci)return false;const move=chess.move({from:from,to:to,promotion:promotion});if(!move)return false;setLastMove(from,to);playerHasMovedThisRound=true;recordTimeline();playMoveOrCheckSound();addMoveIncrement();premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;buildBoard(true);updateStatus();checkRoundEnd();if(learningMode){
+    if(learningOffbookMode||!isWarRoomPlannedMove(uci)){
+        learningPendingOverruleMove=uci;
+        showLocalOffbookMessage();
+
+        // If the player overrules the lesson plan, keep playing real chess:
+        // let the engine answer normally instead of freezing on Black's turn.
+        if(!roundEnded&&!chess.game_over()&&chess.turn()!==playerChar){
+            setTimeout(()=>startEngineMove(),160);
+        }
+
+        return true;
+    }
+
+    setComponentValue({action:"learning_move",move:uci,from:from,to:to,promotion:promotion,fen:chess.fen(),history:chess.history(),nonce:Date.now().toString()+"-"+Math.random().toString()});
+    return true
+}if(!roundEnded&&!chess.game_over()&&chess.turn()!==playerChar)startEngineMove();return true}
 function tryMove(from,to){if(isRealPromotionMove(from,to)){showPromotionPicker(from,to,false);return true}return makePlayerMove(from,to,"q")}
 function tryExecutePremoveChain(){
     if(!isPlayerTurn())return;
@@ -2452,6 +2672,20 @@ function applyEngineMoveUci(uci){
     buildBoard(!keepHeldPieceDropAlive);
     checkRoundEnd();
 
+    if(learningMode&&learningOffbookMode&&learningPendingOverruleMove){
+        const pendingUserMove=learningPendingOverruleMove;
+        learningPendingOverruleMove="";
+        learningOffbookMode=false;
+
+        setComponentValue({
+            action:"learning_overrule_position",
+            user_move:pendingUserMove,
+            engine_move:uci,
+            fen:chess.fen(),
+            nonce:Date.now().toString()+"-"+Math.random().toString()
+        });
+    }
+
     if(chess.game_over())return;
 
     // Manual-release fix should only stop an unqueued hovered move from auto-dropping.
@@ -2468,7 +2702,7 @@ function applyEngineMoveUci(uci){
 
     setTimeout(()=>tryExecutePremoveChain(),35);
 }
-function startEngineMove(){if(countdownActive||roundEnded||!isEngineTurn()||chess.game_over())return;engineThinking=true;updateStatus("Premove now — engine replies in " + (engineMoveTimeMs/1000).toFixed(1) + "s");buildBoard(false);if(engineWorker&&engineReady&&!engineFallback){configureStockfishStrength();reportEngineStatus("Stockfish connected","Using Stockfish at Gauntlet Elo "+currentStockfishElo,true);engineWorker.postMessage("position fen "+chess.fen());engineWorker.postMessage("go movetime "+engineMoveTimeMs.toString());return}reportEngineStatus("Fallback bot","Stockfish did not load in the browser. This is NOT real Stockfish.",false);setTimeout(()=>{const move=fallbackEngineMove();if(!move){engineThinking=false;checkRoundEnd();return}applyEngineMoveUci(move.from+move.to+(move.promotion||""))},engineMoveTimeMs)}
+function startEngineMove(){if(countdownActive||roundEnded||!isEngineTurn()||chess.game_over())return;engineThinking=true;updateStatus("Premove now — engine replies in " + (engineMoveTimeMs/1000).toFixed(1) + "s");if(!learningMode)buildBoard(false);if(engineWorker&&engineReady&&!engineFallback){configureStockfishStrength();reportEngineStatus("Stockfish connected","Using Stockfish at Gauntlet Elo "+currentStockfishElo,true);engineWorker.postMessage("position fen "+chess.fen());engineWorker.postMessage("go movetime "+engineMoveTimeMs.toString());return}reportEngineStatus("Fallback bot","Stockfish did not load in the browser. This is NOT real Stockfish.",false);setTimeout(()=>{const move=fallbackEngineMove();if(!move){engineThinking=false;checkRoundEnd();return}applyEngineMoveUci(move.from+move.to+(move.promotion||""))},engineMoveTimeMs)}
 function initStockfishWorker(){
     const es=document.getElementById("engineStatus");
 
@@ -2621,7 +2855,7 @@ function buildBoard(resetSelection=true){
         ev.preventDefault();
         return false;
     };
-    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
+    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");const purposeNoteForSquare=learningPurposeNoteForSquare(sq);if(learningMode&&purposeNoteForSquare)square.classList.add("learning-good-square");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}if(learningMode&&purposeNoteForSquare){const note=document.createElement("div");note.className="piece-purpose-note";if(parseInt(rank,10)>=6)note.classList.add("down");note.textContent=purposeNoteForSquare;square.appendChild(note)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
 const reviewButton=document.getElementById("reviewBoardButton");if(reviewButton)reviewButton.onclick=(ev)=>{ev.preventDefault();hideLossOverlay()};
 const lossTenRoundButton=document.getElementById("lossTenRoundButton");if(lossTenRoundButton)lossTenRoundButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("ten_round")};
 const lossUnlimitedButton=document.getElementById("lossUnlimitedButton");if(lossUnlimitedButton)lossUnlimitedButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("unlimited")};
@@ -2634,7 +2868,7 @@ const cancelPromotionButton=document.getElementById("cancelPromotionButton");if(
 if(pendingPromotion){positionPromotionPanel(pendingPromotion.to);}
 updateMoveNavStatus();
 setFrameHeight(790);restoreParentScroll()}
-function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White"));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000);currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();buildBoard(true);if(previewMode){updateStatus("Ready board — choose 10-round or unlimited.");return}
+function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;learningMode=args.learning_mode===true;learningFeedbackMessage=args.learning_feedback_message||"";learningFeedbackResult=args.learning_feedback_result||"";learningGoodSquare=args.learning_good_square||"";learningPieceNote=args.learning_piece_note||"";learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;learningOffbookMode=false;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=learningMode?("War Room — White"):(previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White")));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();if(learningMode){showPlayerStartGlow=false;if(playerGlowTimer){clearTimeout(playerGlowTimer);playerGlowTimer=null}}else{showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000)}currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();updateLearningBoardFeedback();buildBoard(true);if(previewMode){updateStatus(learningMode?"War Room Academy — choose or play the plan.":"Ready board — choose 10-round or unlimited.");return}
 const shouldCountdown=currentRoundNumber===1;
 if(shouldCountdown){
     startRoundCountdown(()=>{startTimer(currentTimerInitialSeconds);updateStatus();if(isEngineTurn())setTimeout(()=>startEngineMove(),250)});
@@ -2651,6 +2885,15 @@ window.addEventListener("message",event=>{
     if(currentToken!==args.round_token||currentFen!==args.fen)initPosition(args);
     else {
         soundEnabled=args.sound_enabled!==false;
+        learningMode=args.learning_mode===true;
+        learningFeedbackMessage=args.learning_feedback_message||"";
+        learningFeedbackResult=args.learning_feedback_result||"";
+        learningGoodSquare=args.learning_good_square||"";
+        learningPieceNote=args.learning_piece_note||"";
+        learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];
+        learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];
+        learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;
+        updateLearningBoardFeedback();
         const nextElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));
         const nextSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));
         if(nextElo!==currentStockfishElo||nextSkill!==currentStockfishSkill){
@@ -2734,11 +2977,18 @@ def create_time_input_component():
     TIME_INPUT_FILE.write_text(TIME_INPUT_HTML, encoding="utf-8")
 
 
+def create_auto_advance_component():
+    AUTO_ADVANCE_DIR.mkdir(exist_ok=True)
+    AUTO_ADVANCE_FILE.write_text(AUTO_ADVANCE_HTML, encoding="utf-8")
+
+
 create_component()
 create_time_input_component()
+create_auto_advance_component()
 
 browser_board = components.declare_component("browser_chess_component", path=str(COMPONENT_DIR))
 instant_time_input = components.declare_component("instant_time_component", path=str(TIME_INPUT_DIR))
+learning_auto_advance = components.declare_component("learning_auto_advance_component", path=str(AUTO_ADVANCE_DIR))
 
 
 def ensure_positions_file():
@@ -2824,6 +3074,19 @@ def load_master_tournament_positions():
 def is_master_tournament_mode():
     return st.session_state.get("game_mode") == "master_tournament"
 
+
+# Learning mode: War Room Academy adds story-based opening/endgame decisions with a Road to Victory bar.
+# Learning move sync: playing the correct board move selects and highlights the matching answer.
+# Learning board feedback: right/wrong explanation appears in a wider readable board-bottom message area.
+# Learning clean move feel: War Room mode disables the player-piece start glow/reflash.
+# Learning auto-flow: correct answers make your move, apply the enemy reply, and advance to the next prompt.
+# Learning purpose highlight: only the most recent correct destination is green; the next move replaces it.
+# Learning answer flash: correct/wrong planned moves show green/red answer cards before advancing.
+# Off-book War Room moves: legal moves outside the plan are allowed with a neutral roleplay warning.
+# War Room orientation fix: learning mode always stays White.
+# War Room off-book fix: legal moves outside the plan stay inside the browser board, engine replies, and pieces never jump back/reload.
+# War Room smoothness fix: no board rebuild/dim at engine-thinking start; only the actual engine move redraws.
+# War Room recovery: overrules now generate adaptive choices to repair or improve the London position.
 
 def mode_label():
     if is_unlimited_mode():
@@ -2993,10 +3256,765 @@ def init_state():
         "engine_is_stockfish": False,
         "last_engine_elo": 800,
         "last_engine_skill": 0,
+
+        # War Room Academy / Learning Mode
+        "learning_active": False,
+        "learning_lesson_key": "london_system",
+        "learning_path": "opening",
+        "learning_step_index": 0,
+        "learning_victory": 50,
+        "learning_feedback": None,
+        "learning_answered": False,
+        "learning_current_fen": chess.STARTING_FEN,
+        "learning_board_token": 0,
+        "learning_last_result": None,
+        "learning_selected_answer": None,
+        "learning_last_good_square": "",
+        "learning_last_piece_note": "",
+        "learning_purpose_notes": [],
+        "learning_auto_advance_pending": False,
+        "learning_pending_next_index": None,
+        "learning_flash_token": 0,
+        "learning_override_active": False,
+        "learning_override_step": None,
+        "learning_override_reason": "",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+
+
+LEARNING_LESSONS = {
+    "london_system": {
+        "title": "London System",
+        "subtitle": "Build the fortress, then attack with purpose.",
+        "opening": [
+            {
+                "fen": chess.STARTING_FEN,
+                "chapter": "Opening Campaign · Decision 1",
+                "story": "The campaign begins. Your army needs a stable center before it can attack. The London is not about cheap tricks — it is about building a formation that is hard to break.",
+                "question": "What is our first order, General?",
+                "answers": [
+                    {"text": "Claim the center with d4. We plant a flag in the middle and prepare the London structure.", "move": "d2d4", "correct": True, "victory_change": 12, "feedback": "Correct. d4 gives your army a center to fight around. The London starts by building a reliable base.", "enemy_reply": "d7d5"},
+                    {"text": "Bring the queen out early to scare the enemy before our pieces are ready.", "move": "d1h5", "correct": False, "victory_change": -10, "feedback": "That hurts the war effort. The queen becomes a target and your army is still sleeping."},
+                    {"text": "Push the rook pawn first and start a flank attack immediately.", "move": "h2h4", "correct": False, "victory_change": -8, "feedback": "Too soon. The London works because the center and pieces come first. The attack comes later."},
+                    {"text": "Move a knight to the edge and hope it surprises the enemy.", "move": "g1h3", "correct": False, "victory_change": -7, "feedback": "The edge knight weakens your development. The London needs clean, useful pieces."},
+                ],
+            },
+            {
+                "fen": "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq d6 0 2",
+                "chapter": "Opening Campaign · Decision 2",
+                "story": "The enemy mirrors your center with d5. The battlefield is now contested. We need a piece that supports the center without blocking the London bishop.",
+                "question": "How do we develop without ruining the formation?",
+                "answers": [
+                    {"text": "Develop Nf3. The knight supports the center and prepares safe castling.", "move": "g1f3", "correct": True, "victory_change": 10, "feedback": "Correct. Nf3 is quiet but powerful. It supports d4 and keeps your formation flexible.", "enemy_reply": "g8f6"},
+                    {"text": "Play f4 immediately and turn the battle into a wild kingside charge.", "move": "f2f4", "correct": False, "victory_change": -8, "feedback": "Too reckless. You are weakening the king before your pieces are coordinated."},
+                    {"text": "Play Nc3 and block the c-pawn before we understand the center.", "move": "b1c3", "correct": False, "victory_change": -4, "feedback": "Playable in chess, but not the clean London lesson here. We want c3 available later."},
+                    {"text": "Move the queen to d3 and ask command to do a soldier's job.", "move": "d1d3", "correct": False, "victory_change": -7, "feedback": "The queen is too early. Develop minor pieces before sending command into danger."},
+                ],
+            },
+            {
+                "fen": "rnbqkb1r/ppp1pppp/5n2/3p4/3P4/5N2/PPP1PPPP/RNBQKB1R w KQkq - 2 3",
+                "chapter": "Opening Campaign · Decision 3",
+                "story": "The enemy develops and increases pressure. This is the moment the London becomes the London.",
+                "question": "Which piece becomes the banner of our formation?",
+                "answers": [
+                    {"text": "Bring the bishop to f4. It aims down the board and builds the London fortress.", "move": "c1f4", "correct": True, "victory_change": 12, "feedback": "Correct. Bf4 is the London signature. The bishop develops before e3 closes it in.", "enemy_reply": "c7c5"},
+                    {"text": "Play e3 first and trap the bishop behind the wall.", "move": "e2e3", "correct": False, "victory_change": -9, "feedback": "That is the classic timing mistake. If e3 comes first, the bishop loses its best square."},
+                    {"text": "Play g4 and attack before the army has finished assembling.", "move": "g2g4", "correct": False, "victory_change": -12, "feedback": "That is chaos, not a campaign. The king gets weaker and the center is unfinished."},
+                    {"text": "Move the queen to d2 and hope the bishop finds a job later.", "move": "d1d2", "correct": False, "victory_change": -6, "feedback": "Too slow. The London wants the bishop active now."},
+                ],
+            },
+            {
+                "fen": "rnbqkb1r/pp2pppp/5n2/2pp4/3P1B2/5N2/PPP1PPPP/RN1QKB1R w KQkq c6 0 4",
+                "chapter": "Opening Campaign · Decision 4",
+                "story": "The enemy strikes with c5, trying to chip away at your center. The fortress needs a support beam.",
+                "question": "How do we reinforce the structure?",
+                "answers": [
+                    {"text": "Play e3. The center is supported, the bishop is already outside, and castling is near.", "move": "e2e3", "correct": True, "victory_change": 10, "feedback": "Correct. This is why Bf4 came first. Now e3 supports the base without burying the bishop.", "enemy_reply": "d8b6"},
+                    {"text": "Push dxc5 and give up the center shape immediately.", "move": "d4c5", "correct": False, "victory_change": -6, "feedback": "Sometimes captures are playable, but here the lesson is structure. Do not abandon the fortress too early."},
+                    {"text": "Play h4 and threaten the wing before the center is safe.", "move": "h2h4", "correct": False, "victory_change": -8, "feedback": "Wing attacks are only strong after the middle is secure."},
+                    {"text": "Move the king by hand and delay development.", "move": "e1d2", "correct": False, "victory_change": -10, "feedback": "The king belongs safe after castling, not wandering into the battlefield."},
+                ],
+            },
+            {
+                "fen": "rnb1kb1r/pp2pppp/1q3n2/2pp4/3P1B2/4PN2/PPP2PPP/RN1QKB1R w KQkq - 1 5",
+                "chapter": "Opening Campaign · Decision 5",
+                "story": "The enemy queen appears on b6, staring at b2 and trying to annoy your queenside. This is a common anti-London idea: pressure the base of your camp.",
+                "question": "How do we answer the queen raid without panicking?",
+                "answers": [
+                    {"text": "Play c3. We reinforce d4, give the queen less bite, and keep the London wall intact.", "move": "c2c3", "correct": True, "victory_change": 12, "feedback": "Correct. c3 is calm and strong. It supports d4 and reduces the queen's pressure.", "enemy_reply": "e7e6"},
+                    {"text": "Chase the queen with b3 immediately, even if it creates dark-square holes.", "move": "b2b3", "correct": False, "victory_change": -4, "feedback": "b3 can exist in some lines, but c3 is the cleaner London stabilizer here."},
+                    {"text": "Launch Qb3 and trade queen raids with the enemy.", "move": "d1b3", "correct": False, "victory_change": -5, "feedback": "Possible sometimes, but the lesson is not to make the queen solve everything early."},
+                    {"text": "Ignore it and play a random kingside pawn move.", "move": "g2g3", "correct": False, "victory_change": -8, "feedback": "Ignoring queen pressure can cost your base. Stabilize first."},
+                ],
+            },
+        ],
+        "endgame": [
+            {
+                "fen": "8/8/8/3k4/8/3K4/8/4R3 w - - 0 1",
+                "chapter": "Endgame Conversion · Decision 1",
+                "story": "You have the rook. The enemy king is active, but this is a won campaign if you drive him back with discipline.",
+                "question": "What is the winning mindset?",
+                "answers": [
+                    {"text": "Use the rook to cut the king off and shrink his battlefield.", "move": "e1e5", "correct": True, "victory_change": 12, "feedback": "Correct. Rooks win by cutting the king off, not by checking randomly.", "enemy_reply": "d5d6"},
+                    {"text": "Check forever and hope the enemy walks into mate.", "move": "e1e7", "correct": False, "victory_change": -4, "feedback": "Checks need a plan. The goal is to reduce space."},
+                    {"text": "Move the king away from the action.", "move": "d3c2", "correct": False, "victory_change": -8, "feedback": "The king must help. Leaving the battlefield slows the win."},
+                    {"text": "Offer the rook because king opposition feels scary.", "move": "e1d1", "correct": False, "victory_change": -12, "feedback": "Never surrender the winning piece. Use it with structure."},
+                ],
+            }
+        ],
+    }
+}
+
+
+def learning_steps():
+    lesson = LEARNING_LESSONS.get(st.session_state.learning_lesson_key, LEARNING_LESSONS["london_system"])
+    return lesson.get(st.session_state.learning_path, lesson["opening"])
+
+
+def current_learning_step():
+    if st.session_state.get("learning_override_active") and st.session_state.get("learning_override_step"):
+        return st.session_state.learning_override_step
+
+    steps = learning_steps()
+    if not steps:
+        return None
+
+    index = max(0, min(int(st.session_state.learning_step_index), len(steps) - 1))
+    return steps[index]
+
+
+def apply_learning_moves(fen, moves):
+    board = chess.Board(fen)
+    for uci in moves:
+        if not uci:
+            continue
+        try:
+            move = chess.Move.from_uci(uci)
+        except ValueError:
+            continue
+        if move in board.legal_moves:
+            board.push(move)
+    return board.fen()
+
+
+def move_label_from_uci(board, uci):
+    try:
+        move = chess.Move.from_uci(str(uci))
+        if move in board.legal_moves:
+            san = board.san(move)
+            return san
+    except Exception:
+        pass
+    return str(uci)
+
+
+def classify_overrule_move(uci):
+    uci = normalize_learning_move(uci)
+
+    if len(uci) < 4:
+        return ("neutral", "That was an independent decision.")
+
+    from_sq = uci[:2]
+    to_sq = uci[2:4]
+
+    if from_sq == "d1":
+        return ("bad", "The queen came out early. In the London, early queen adventures often give the enemy tempo.")
+    if from_sq == "e1":
+        return ("bad", "The king moved before the army was ready. That usually damages safety and castling options.")
+    if from_sq in {"h2", "g2", "a2"}:
+        return ("bad", "That wing pawn move starts a side mission before the center is fully organized.")
+    if to_sq in {"a3", "a4", "h3", "h4"}:
+        return ("bad", "That move drifts toward the edge before the London structure is complete.")
+
+    return ("neutral", "That overrule is playable, but it left the exact London lesson path.")
+
+
+def legal_move_if_available(board, uci):
+    try:
+        move = chess.Move.from_uci(uci)
+    except ValueError:
+        return None
+    return move if move in board.legal_moves else None
+
+
+def add_recovery_candidate(candidates, board, uci, text, feedback, correct=False):
+    move = legal_move_if_available(board, uci)
+
+    if not move:
+        return
+
+    if any(item.get("move") == uci for item in candidates):
+        return
+
+    candidates.append({
+        "text": text,
+        "move": uci,
+        "correct": bool(correct),
+        "victory_change": 8 if correct else -3,
+        "feedback": feedback,
+    })
+
+
+def generate_london_recovery_step(fen, user_move="", engine_move=""):
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        board = chess.Board(chess.STARTING_FEN)
+
+    severity, reason = classify_overrule_move(user_move)
+
+    if board.turn != chess.WHITE:
+        # The recovery prompt is meant for the user as White.
+        # If somehow it is Black to move, keep the message neutral and wait.
+        return {
+            "fen": board.fen(),
+            "chapter": "War Room Recovery · Hold Position",
+            "story": "The enemy is still moving. Once command returns to White, the War Room will help you recover the plan.",
+            "question": "Hold the line and wait for your turn.",
+            "answers": [],
+            "recovery": True,
+        }
+
+    candidates = []
+
+    add_recovery_candidate(
+        candidates,
+        board,
+        "g1f3",
+        "Recover with Nf3. Bring a defender into the center and get closer to castling.",
+        "Good recovery. Nf3 steadies the center and brings the London back toward normal development.",
+        True,
+    )
+    add_recovery_candidate(
+        candidates,
+        board,
+        "c1f4",
+        "Develop Bf4. Put the London bishop outside the pawn wall before e3 closes the door.",
+        "Good recovery. Bf4 is the London banner piece and keeps the army coordinated.",
+        not candidates,
+    )
+    add_recovery_candidate(
+        candidates,
+        board,
+        "e2e3",
+        "Play e3. Reinforce d4 and prepare the kingside army to finish development.",
+        "Solid recovery. e3 supports the London wall, especially once the bishop is active.",
+        not candidates,
+    )
+    add_recovery_candidate(
+        candidates,
+        board,
+        "c2c3",
+        "Play c3. Repair the center and make the d4 outpost harder to break.",
+        "Solid recovery. c3 is one of the key London support beams.",
+        not candidates,
+    )
+    add_recovery_candidate(
+        candidates,
+        board,
+        "f1d3",
+        "Develop Bd3. Aim at the kingside and prepare to castle.",
+        "Good practical recovery. Bd3 adds pressure and helps finish development.",
+        not candidates,
+    )
+    add_recovery_candidate(
+        candidates,
+        board,
+        "e1g1",
+        "Castle kingside. Get the king out of the center before the fight opens.",
+        "Good recovery. King safety matters once the game leaves the planned road.",
+        not candidates,
+    )
+
+    # Fill remaining choices with legal moves so the prompt always has options.
+    for move in list(board.legal_moves):
+        if len(candidates) >= 4:
+            break
+        uci = move.uci()
+        san = move_label_from_uci(board, uci)
+
+        if any(item.get("move") == uci for item in candidates):
+            continue
+
+        candidates.append({
+            "text": f"Continue with {san}. This is legal, but it may not repair the London structure as cleanly.",
+            "move": uci,
+            "correct": False,
+            "victory_change": -2,
+            "feedback": "Playable, but the War Room prefers restoring development, center support, and king safety first.",
+        })
+
+    if candidates:
+        candidates[0]["correct"] = True
+        candidates[0]["victory_change"] = 8
+
+    move_text = user_move if user_move else "that move"
+    enemy_text = f" The engine replied with {engine_move}." if engine_move else ""
+
+    if severity == "bad":
+        story = (
+            f"That decision hurt the campaign. {reason}{enemy_text} "
+            "We are no longer following the clean London road, but the position can still be repaired."
+        )
+        question = "Recovery order: which move gets us closest to a healthy London setup?"
+    else:
+        story = (
+            f"Overruling decision accepted. {reason}{enemy_text} "
+            "The War Room is adjusting the plan so you can keep playing a real game."
+        )
+        question = "Choose a recovery plan, or keep overruling if you trust the position."
+
+    return {
+        "fen": board.fen(),
+        "chapter": "War Room Recovery · London System",
+        "story": story,
+        "question": question,
+        "answers": candidates,
+        "recovery": True,
+        "overrule_move": move_text,
+    }
+
+
+def activate_learning_recovery(fen, user_move="", engine_move=""):
+    step = generate_london_recovery_step(fen, user_move=user_move, engine_move=engine_move)
+    st.session_state.learning_override_active = True
+    st.session_state.learning_override_step = step
+    st.session_state.learning_current_fen = step.get("fen", fen)
+    st.session_state.learning_feedback = (
+        "<b>War Room adjusted.</b><br>"
+        "You can select a recovery option below, or keep overruling and play your own chess."
+    )
+    st.session_state.learning_answered = False
+    st.session_state.learning_selected_answer = None
+    st.session_state.learning_last_result = ""
+    st.session_state.learning_last_good_square = ""
+    st.session_state.learning_last_piece_note = ""
+    st.session_state.learning_auto_advance_pending = False
+    st.session_state.learning_pending_next_index = None
+
+
+def start_learning_mode(path="opening"):
+    st.session_state.learning_active = True
+    st.session_state.learning_lesson_key = "london_system"
+    st.session_state.learning_path = path
+    st.session_state.learning_step_index = 0
+    st.session_state.learning_victory = 50
+    st.session_state.learning_feedback = None
+    st.session_state.learning_answered = False
+    st.session_state.learning_last_result = None
+    st.session_state.learning_selected_answer = None
+    st.session_state.learning_last_good_square = ""
+    st.session_state.learning_last_piece_note = ""
+    st.session_state.learning_purpose_notes = []
+    st.session_state.learning_auto_advance_pending = False
+    st.session_state.learning_pending_next_index = None
+    st.session_state.learning_override_active = False
+    st.session_state.learning_override_step = None
+    st.session_state.learning_override_reason = ""
+
+    steps = LEARNING_LESSONS["london_system"].get(path, LEARNING_LESSONS["london_system"]["opening"])
+    st.session_state.learning_current_fen = steps[0]["fen"] if steps else chess.STARTING_FEN
+    st.session_state.learning_board_token += 1
+
+    abandon_game()
+
+
+def stop_learning_mode():
+    st.session_state.learning_active = False
+    st.session_state.learning_feedback = None
+    st.session_state.learning_answered = False
+    st.session_state.learning_last_result = None
+    st.session_state.learning_selected_answer = None
+    st.session_state.learning_last_good_square = ""
+    st.session_state.learning_last_piece_note = ""
+    st.session_state.learning_purpose_notes = []
+    st.session_state.learning_auto_advance_pending = False
+    st.session_state.learning_pending_next_index = None
+    st.session_state.learning_override_active = False
+    st.session_state.learning_override_step = None
+    st.session_state.learning_override_reason = ""
+    st.session_state.learning_board_token += 1
+
+
+
+def normalize_learning_move(uci):
+    if not uci:
+        return ""
+    return str(uci).strip().lower()
+
+
+def handle_learning_board_move(uci, fen=""):
+    if not st.session_state.learning_active or st.session_state.learning_answered:
+        return False
+
+    step = current_learning_step()
+
+    if not step:
+        return False
+
+    played = normalize_learning_move(uci)
+
+    # A plain click/selection should never trigger a War Room warning.
+    if len(played) < 4:
+        return False
+
+    answers = step.get("answers", [])
+
+    for idx, answer in enumerate(answers):
+        expected = normalize_learning_move(answer.get("move", ""))
+
+        if expected and (played == expected or played.startswith(expected)):
+            answer_learning_choice(idx)
+            return True
+
+    # Off-book moves are handled inside the board so the chess position never reloads or jumps back.
+    return False
+
+
+def add_learning_purpose_note(square, note, move=""):
+    square = str(square or "").strip().lower()
+    note = str(note or "").strip()
+
+    if not square or not note:
+        return
+
+    notes = list(st.session_state.get("learning_purpose_notes", []))
+    notes = [
+        item for item in notes
+        if not (isinstance(item, dict) and item.get("square") == square and item.get("note") == note)
+    ]
+    notes.append({
+        "square": square,
+        "note": note,
+        "move": str(move or ""),
+        "step": int(st.session_state.get("learning_step_index", 0)),
+    })
+
+    st.session_state.learning_purpose_notes = notes[-20:]
+
+
+def learning_piece_note_from_answer(answer):
+    text = str(answer.get("purpose") or answer.get("feedback") or "This piece supports the plan.")
+    text = text.replace("Correct. ", "").replace("Correct.", "")
+    text = text.replace("<b>", "").replace("</b>", "")
+    text = text.replace("<br>", " ").replace("<br/>", " ").replace("<br />", " ")
+    text = " ".join(text.split())
+
+    if not text.lower().startswith(("this", "it", "the", "d4", "nf3", "bf4", "e3", "c3")):
+        text = "This piece was placed here to " + text[:1].lower() + text[1:]
+
+    if len(text) > 125:
+        text = text[:122].rstrip() + "..."
+
+    return text
+
+
+def complete_learning_auto_advance():
+    if not st.session_state.get("learning_auto_advance_pending"):
+        return False
+
+    next_index = st.session_state.get("learning_pending_next_index")
+
+    if next_index is None:
+        st.session_state.learning_auto_advance_pending = False
+        return False
+
+    steps = learning_steps()
+    next_index = int(next_index)
+
+    if 0 <= next_index < len(steps):
+        st.session_state.learning_step_index = next_index
+        step = current_learning_step()
+        st.session_state.learning_current_fen = step["fen"] if step and step.get("fen") else st.session_state.learning_current_fen
+        st.session_state.learning_answered = False
+        st.session_state.learning_selected_answer = None
+        st.session_state.learning_last_good_square = ""
+        st.session_state.learning_last_piece_note = ""
+        st.session_state.learning_purpose_notes = []
+        st.session_state.learning_auto_advance_pending = False
+        st.session_state.learning_pending_next_index = None
+        st.session_state.learning_override_active = False
+        st.session_state.learning_override_step = None
+        st.session_state.learning_override_reason = ""
+        st.session_state.learning_board_token += 1
+        return True
+
+    st.session_state.learning_auto_advance_pending = False
+    st.session_state.learning_pending_next_index = None
+    return False
+
+
+def answer_learning_choice(answer_index):
+    step = current_learning_step()
+    if not step or st.session_state.learning_answered:
+        return
+
+    answers = step.get("answers", [])
+    if answer_index < 0 or answer_index >= len(answers):
+        return
+
+    answer = answers[answer_index]
+    is_correct = bool(answer.get("correct"))
+    change = int(answer.get("victory_change", 0))
+    st.session_state.learning_victory = max(0, min(100, int(st.session_state.learning_victory) + change))
+    st.session_state.learning_answered = True
+    st.session_state.learning_selected_answer = answer_index
+    st.session_state.learning_last_result = "good" if is_correct else "bad"
+
+    sign = "+" if change >= 0 else ""
+    verdict = "Good recovery." if (is_correct and st.session_state.get("learning_override_active")) else ("Correct." if is_correct else "That hurts the war effort.")
+    st.session_state.learning_feedback = (
+        f"<b>{verdict}</b> Road to Victory {sign}{change}.<br>"
+        f"{answer.get('feedback','')}"
+    )
+
+    move_uci = normalize_learning_move(answer.get("move", ""))
+    if is_correct and len(move_uci) >= 4:
+        note = learning_piece_note_from_answer(answer)
+        target_square = move_uci[2:4]
+        st.session_state.learning_last_good_square = target_square
+        st.session_state.learning_last_piece_note = note
+        st.session_state.learning_purpose_notes = []
+    else:
+        st.session_state.learning_last_good_square = ""
+        st.session_state.learning_last_piece_note = ""
+
+    moves = [answer.get("move")]
+
+    # Recovery prompts are generated from the actual off-book game position.
+    # If the user clicks a recovery answer, make that move and let Black make a simple reply in Python.
+    # Then create a fresh recovery prompt from the new position instead of snapping back to the fixed London script.
+    if st.session_state.get("learning_override_active"):
+        board_fen = step.get("fen", st.session_state.learning_current_fen or chess.STARTING_FEN)
+        try:
+            board = chess.Board(board_fen)
+            move = chess.Move.from_uci(move_uci)
+            if move in board.legal_moves:
+                board.push(move)
+
+                if not board.is_game_over() and board.turn == chess.BLACK:
+                    legal = list(board.legal_moves)
+                    captures = [m for m in legal if board.is_capture(m)]
+                    checks = []
+                    for m in legal:
+                        temp = board.copy()
+                        temp.push(m)
+                        if temp.is_check():
+                            checks.append(m)
+
+                    pool = captures or checks or legal
+                    if pool:
+                        reply = random.choice(pool)
+                        board.push(reply)
+
+                new_fen = board.fen()
+                st.session_state.learning_current_fen = new_fen
+                st.session_state.learning_override_step = generate_london_recovery_step(new_fen, user_move=move_uci, engine_move="")
+                st.session_state.learning_answered = False
+                st.session_state.learning_selected_answer = None
+                st.session_state.learning_last_result = "good" if is_correct else "bad"
+                st.session_state.learning_board_token += 1
+                return
+        except Exception:
+            pass
+
+        st.session_state.learning_answered = True
+        st.session_state.learning_board_token += 1
+        return
+
+    if is_correct and answer.get("enemy_reply"):
+        moves.append(answer.get("enemy_reply"))
+
+    st.session_state.learning_current_fen = apply_learning_moves(step["fen"], moves)
+    st.session_state.learning_board_token += 1
+
+    if is_correct:
+        steps = learning_steps()
+        next_index = st.session_state.learning_step_index + 1
+
+        if next_index < len(steps):
+            # Show the current multiple choice answer in green briefly,
+            # then the small auto-advance component moves to the next prompt.
+            st.session_state.learning_auto_advance_pending = True
+            st.session_state.learning_pending_next_index = next_index
+            st.session_state.learning_flash_token += 1
+            return
+
+        st.session_state.learning_feedback = (
+            "<b>Campaign complete.</b> You finished this War Room lesson. "
+            f"Final Road to Victory: {st.session_state.learning_victory}%."
+        )
+        st.session_state.learning_auto_advance_pending = False
+        st.session_state.learning_pending_next_index = None
+        st.session_state.learning_last_result = "good" if st.session_state.learning_victory >= 60 else "bad"
+        return
+
+    # Wrong choices flash red and stay on the current prompt until the player continues.
+    st.session_state.learning_auto_advance_pending = False
+    st.session_state.learning_pending_next_index = None
+
+def next_learning_decision():
+    steps = learning_steps()
+    if st.session_state.learning_step_index + 1 < len(steps):
+        st.session_state.learning_step_index += 1
+        step = current_learning_step()
+        st.session_state.learning_current_fen = step["fen"] if step else chess.STARTING_FEN
+        st.session_state.learning_feedback = None
+        st.session_state.learning_answered = False
+        st.session_state.learning_last_result = None
+        st.session_state.learning_selected_answer = None
+        st.session_state.learning_last_good_square = ""
+        st.session_state.learning_last_piece_note = ""
+        st.session_state.learning_auto_advance_pending = False
+        st.session_state.learning_pending_next_index = None
+        st.session_state.learning_board_token += 1
+    else:
+        st.session_state.learning_feedback = (
+            "<b>Campaign complete.</b> You finished this War Room lesson. "
+            f"Final Road to Victory: {st.session_state.learning_victory}%."
+        )
+        st.session_state.learning_answered = True
+        st.session_state.learning_last_result = "good" if st.session_state.learning_victory >= 60 else "bad"
+
+
+def learning_board_feedback_text():
+    feedback = st.session_state.get("learning_feedback") or ""
+
+    if not feedback:
+        return ""
+
+    text = str(feedback)
+    text = text.replace("<b>", "").replace("</b>", "")
+    text = text.replace("<br>", " ").replace("<br/>", " ").replace("<br />", " ")
+    text = " ".join(text.split())
+
+    # Keep it readable in the board's bottom message area.
+    if len(text) > 145:
+        text = text[:142].rstrip() + "..."
+
+    return text
+
+
+def render_learning_mode_board():
+    lesson = LEARNING_LESSONS.get(st.session_state.learning_lesson_key, LEARNING_LESSONS["london_system"])
+    step = current_learning_step()
+
+    if not step:
+        st.info("No learning lesson found.")
+        return
+
+    board_fen = st.session_state.learning_current_fen or step["fen"]
+
+    learning_value = browser_board(
+        fen=board_fen,
+        position_id=f"learning_{st.session_state.learning_lesson_key}_{st.session_state.learning_path}_{st.session_state.learning_step_index}",
+        player_color="white",
+        round_token=st.session_state.learning_board_token,
+        sound_enabled=st.session_state.sound_enabled,
+        timer_initial_seconds=999,
+        timer_increment_seconds=0,
+        engine_move_time_ms=2100,
+        stockfish_elo=800,
+        stockfish_skill=0,
+        round_number=st.session_state.learning_step_index + 1,
+        total_rounds=len(learning_steps()),
+        preview_mode=True,
+        learning_mode=True,
+        learning_feedback_message=learning_board_feedback_text(),
+        learning_feedback_result=st.session_state.learning_last_result or "",
+        learning_good_square=st.session_state.get("learning_last_good_square", ""),
+        learning_piece_note=st.session_state.get("learning_last_piece_note", ""),
+        learning_purpose_notes=[],
+        learning_expected_moves=[
+            answer.get("move", "")
+            for answer in step.get("answers", [])
+            if answer.get("move")
+        ],
+        learning_offbook_message="Overruling decision made. The engine will answer — call the War Room if it gets dangerous.",
+        round_result=None,
+        round_result_detail="",
+        key="browser_chess_learning_component",
+        default=None,
+    )
+
+    if apply_component_value(learning_value):
+        st.rerun()
+
+    victory = int(st.session_state.learning_victory)
+    feedback_class = st.session_state.learning_last_result or ""
+
+    st.markdown(
+        f"""
+        <div class="academy-card">
+            <div class="academy-kicker">War Room Academy · {lesson['title']}</div>
+            <div class="academy-title">{step['chapter']}</div>
+            <p class="academy-story">{step['story']}</p>
+            <div class="victory-wrap">
+                <div class="victory-label">
+                    <span>Road to Victory</span>
+                    <span>{victory}%</span>
+                </div>
+                <div class="victory-track"><div class="victory-fill" style="width:{victory}%"></div></div>
+            </div>
+            <div class="academy-question">{step['question']}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    letters = ["A", "B", "C", "D"]
+    answers = step.get("answers", [])
+
+    if st.session_state.learning_answered:
+        selected_idx = st.session_state.get("learning_selected_answer")
+        correct_idx = next((i for i, item in enumerate(answers) if item.get("correct")), None)
+        answer_cards = ['<div class="academy-card"><div class="academy-answer-list">']
+
+        for idx, answer in enumerate(answers):
+            classes = ["academy-answer-card"]
+
+            if idx == correct_idx:
+                classes.append("correct")
+            elif idx == selected_idx:
+                classes.append("wrong")
+            else:
+                classes.append("neutral")
+
+            safe_text = html.escape(str(answer.get("text", "")))
+            class_attr = " ".join(classes)
+            answer_cards.append(
+                f'<div class="{class_attr}">'
+                f'<span class="academy-answer-letter">{letters[idx]}</span>{safe_text}'
+                '</div>'
+            )
+
+        answer_cards.append("</div></div>")
+        st.markdown("".join(answer_cards), unsafe_allow_html=True)
+    else:
+        for idx, answer in enumerate(answers):
+            label = f"{letters[idx]}. {answer['text']}"
+            if st.button(label, key=f"learning_answer_{st.session_state.learning_step_index}_{idx}", width="stretch"):
+                answer_learning_choice(idx)
+                st.rerun()
+
+    if st.session_state.get("learning_auto_advance_pending"):
+        auto_value = learning_auto_advance(
+            action="learning_auto_next",
+            token=f"war_room_{st.session_state.learning_flash_token}",
+            delay_ms=1300,
+            key=f"learning_auto_advance_{st.session_state.learning_flash_token}",
+            default=None,
+        )
+        if apply_component_value(auto_value):
+            st.rerun()
+
+    if st.session_state.learning_answered and not st.session_state.get("learning_auto_advance_pending"):
+        if st.button("▶ Continue War Room Lesson", width="stretch", type="primary"):
+            next_learning_decision()
+            st.rerun()
 
 
 
@@ -3545,6 +4563,7 @@ def reset_run_stats(mode, positions):
 
 
 def start_game(positions, mode="ten_round"):
+    st.session_state.learning_active = False
     if not positions:
         st.warning("No positions found. Add positions to positions.json first.")
         return
@@ -3560,6 +4579,7 @@ def start_game(positions, mode="ten_round"):
 
 
 def start_master_tournament(master_positions=None):
+    st.session_state.learning_active = False
     # Reload from disk every time and throw away the current game before building a new one.
     master_positions = load_master_tournament_positions()
 
@@ -3663,6 +4683,20 @@ def apply_component_value(value):
     st.session_state.last_nonce = nonce
 
     action = value.get("action")
+
+    if action == "learning_auto_next":
+        return complete_learning_auto_advance()
+
+    if action == "learning_overrule_position":
+        activate_learning_recovery(
+            value.get("fen", ""),
+            user_move=value.get("user_move", ""),
+            engine_move=value.get("engine_move", ""),
+        )
+        return True
+
+    if action == "learning_move":
+        return handle_learning_board_move(value.get("move", ""), value.get("fen", ""))
 
     if action == "engine_status":
         previous = (
@@ -4269,6 +5303,71 @@ st.markdown(
         100% { opacity:0; transform:scale(.99); }
     }
 
+
+    .academy-card {
+        max-width: 760px;
+        margin: 14px auto 0;
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(21,31,49,.96), rgba(15,23,38,.96));
+        border: 1px solid rgba(255,255,255,.12);
+        box-shadow: 0 18px 45px rgba(0,0,0,.24);
+        color: #f8fbff;
+    }
+    .academy-kicker { color:#ffda83; font-size:12px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; margin-bottom:6px; }
+    .academy-title { font-size:26px; line-height:1.1; font-weight:1000; color:#fff3d7; margin-bottom:8px; }
+    .academy-story { font-size:15px; line-height:1.45; color:#dbeafe; margin:0 0 12px; }
+    .academy-question { margin-top:10px; font-size:17px; font-weight:900; color:#ffffff; }
+    .victory-wrap { margin:14px 0 10px; }
+    .victory-label { display:flex; justify-content:space-between; font-size:12px; font-weight:900; color:#e8f1ff; margin-bottom:7px; letter-spacing:.03em; }
+    .victory-track { height:18px; border-radius:999px; background:rgba(7,12,24,.76); border:1px solid rgba(255,255,255,.12); overflow:hidden; box-shadow:inset 0 2px 8px rgba(0,0,0,.40); }
+    .victory-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#ff5b76,#ffe082 48%,#58f29b); box-shadow:0 0 18px rgba(88,242,155,.25); }
+    .academy-feedback { margin-top:14px; padding:13px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.07); color:#eef6ff; font-size:14px; line-height:1.4; }
+    .academy-feedback.good { border-color:rgba(88,242,155,.38); background:rgba(88,242,155,.10); }
+    .academy-feedback.bad { border-color:rgba(255,91,118,.40); background:rgba(255,91,118,.10); }
+
+    .academy-answer-list {
+        display:flex;
+        flex-direction:column;
+        gap:9px;
+        margin-top:12px;
+    }
+    .academy-answer-card {
+        padding:12px 13px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.055);
+        color:#eaf2ff;
+        font-size:14px;
+        line-height:1.35;
+        font-weight:750;
+    }
+    .academy-answer-card.correct {
+        border-color:rgba(88,242,155,.58);
+        background:linear-gradient(180deg, rgba(88,242,155,.20), rgba(88,242,155,.10));
+        box-shadow:0 0 18px rgba(88,242,155,.16);
+        color:#eafff2;
+    }
+    .academy-answer-card.wrong {
+        border-color:rgba(255,91,118,.54);
+        background:linear-gradient(180deg, rgba(255,91,118,.20), rgba(255,91,118,.10));
+        color:#fff0f3;
+    }
+    .academy-answer-card.neutral {
+        opacity:.68;
+    }
+    .academy-answer-letter {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        width:26px;
+        height:26px;
+        margin-right:8px;
+        border-radius:999px;
+        background:rgba(255,255,255,.14);
+        color:#fff3d7;
+        font-weight:1000;
+    }
 </style>
     """,
     unsafe_allow_html=True
@@ -4375,7 +5474,9 @@ with board_col:
     st.session_state.sound_enabled = True
     st.session_state.engine_move_time_ms = 2100
 
-    if pos:
+    if st.session_state.learning_active:
+        render_learning_mode_board()
+    elif pos:
         value = browser_board(
             fen=pos["fen"],
             position_id=pos.get("id", "position"),
@@ -4422,6 +5523,36 @@ with side_col:
     if st.button("♛   Start Master Tournament", width="stretch", type="primary"):
         start_master_tournament(master_tournament_positions)
         st.rerun()
+
+    st.markdown(
+        """
+        <div class="side-card">
+            <h3>🎓&nbsp;&nbsp;War Room Academy</h3>
+            <div class="sub">Story-based lessons for openings and conversions.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    lesson_path = st.radio(
+        "Choose training path",
+        ["Opening: London System", "Endgame Conversion"],
+        index=0 if st.session_state.learning_path == "opening" else 1,
+        key="learning_path_selector",
+    )
+
+    if st.button("🎓   Start Learning Mode", width="stretch", type="primary"):
+        start_learning_mode("opening" if lesson_path.startswith("Opening") else "endgame")
+        st.rerun()
+
+    if st.session_state.learning_active:
+        if st.button("↺   Restart Lesson", width="stretch"):
+            start_learning_mode(st.session_state.learning_path)
+            st.rerun()
+
+        if st.button("✕   Exit Learning Mode", width="stretch"):
+            stop_learning_mode()
+            st.rerun()
 
     if st.button(
         "▷|   Next Round",
