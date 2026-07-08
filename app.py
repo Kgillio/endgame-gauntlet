@@ -56,6 +56,26 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 st.markdown("""
 <style>
 
+/* Prevent Streamlit stale/rerun fade on custom components. */
+[data-testid="stElementContainer"],
+[data-testid="stIFrame"],
+iframe,
+.element-container,
+.stMarkdown,
+.stButton,
+.stCheckbox {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+[data-testid="stElementContainer"][style*="opacity"],
+.element-container[style*="opacity"],
+iframe[style*="opacity"] {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+
 /* DFU mode cards */
 .dfu-panel {
     margin-top: 38px;
@@ -1170,11 +1190,10 @@ function render(args){
             const square=btn.getAttribute("data-square")||"";
             if(!square||result)return;
 
-            setComponentValue({
-                action:"dfu_select_piece",
-                square:square,
-                nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
-            });
+            // Local visual selection only. Do not call Streamlit for simple selection,
+            // because that makes the game area look like it is briefly reloading.
+            root.querySelectorAll(".dfu-choice").forEach(item=>item.classList.remove("selected"));
+            btn.classList.add("selected");
         });
     });
 
@@ -2085,11 +2104,15 @@ function selectDfuSquare(square){
         return false;
     }
 
-    setComponentValue({
-        action:"dfu_select_piece",
-        square:square,
-        nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
-    });
+    // IMPORTANT: keep DFU selection inside the browser.
+    // Sending this to Streamlit causes a rerun, and Streamlit briefly dims/stales
+    // the board iframe. Actual moves still get sent to Python.
+    dfuSelectedSquare=square;
+    selectedSquare=square;
+    clearHighlights();
+    buildBoard(false);
+    highlightFrom(square);
+    updateDfuRevealButton();
 
     return true;
 }
@@ -3909,7 +3932,18 @@ function buildBoard(resetSelection=true){
         ev.preventDefault();
         return false;
     };
-    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");if(dfuMode&&(isDfuCandidate(sq)||(dfuCorrectSquare&&sq===dfuCorrectSquare))){square.classList.add("dfu-candidate-square");if(sq===dfuSelectedSquare)square.classList.add("dfu-selected-square");if(dfuCorrectSquare&&sq===dfuCorrectSquare)square.classList.add("dfu-correct-square")}const purposeNoteForSquare=learningPurposeNoteForSquare(sq);if(learningMode&&purposeNoteForSquare)square.classList.add("learning-good-square");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");if(!browsingTimeline&&engineGlowSquare&&sq===engineGlowSquare)pe.classList.add("engine-move-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}if(learningMode&&purposeNoteForSquare){const note=document.createElement("div");note.className="piece-purpose-note";if(parseInt(rank,10)>=6)note.classList.add("down");note.textContent=purposeNoteForSquare;square.appendChild(note)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}if(dfuMode&&isDfuAnswerSquare(sq)){selectDfuSquare(sq);return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
+    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");if(dfuMode&&(isDfuCandidate(sq)||(dfuCorrectSquare&&sq===dfuCorrectSquare))){square.classList.add("dfu-candidate-square");if(sq===dfuSelectedSquare)square.classList.add("dfu-selected-square");if(dfuCorrectSquare&&sq===dfuCorrectSquare)square.classList.add("dfu-correct-square")}const purposeNoteForSquare=learningPurposeNoteForSquare(sq);if(learningMode&&purposeNoteForSquare)square.classList.add("learning-good-square");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");if(!browsingTimeline&&engineGlowSquare&&sq===engineGlowSquare)pe.classList.add("engine-move-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}if(learningMode&&purposeNoteForSquare){const note=document.createElement("div");note.className="piece-purpose-note";if(parseInt(rank,10)>=6)note.classList.add("down");note.textContent=purposeNoteForSquare;square.appendChild(note)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}if(dfuMode&&isDfuAnswerSquare(sq)&&!isDfuFreePlayActive()){
+    if(dfuSelectedSquare===sq&&selectedSquare===sq){
+        dfuSelectedSquare="";
+        selectedSquare=null;
+        clearHighlights();
+        buildBoard(false);
+        return;
+    }
+    selectDfuSquare(sq);
+    return;
+}
+clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
 const reviewButton=document.getElementById("reviewBoardButton");if(reviewButton)reviewButton.onclick=(ev)=>{ev.preventDefault();hideLossOverlay()};
 const lossTenRoundButton=document.getElementById("lossTenRoundButton");if(lossTenRoundButton)lossTenRoundButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("ten_round")};
 const lossUnlimitedButton=document.getElementById("lossUnlimitedButton");if(lossUnlimitedButton)lossUnlimitedButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("unlimited")};
@@ -4193,6 +4227,7 @@ def is_master_tournament_mode():
 # DFU full reveal animation: Reveal Answer resets to the pre-mistake position and auto-plays the correct line with computer replies.
 # DFU post-reveal free play: after the reveal line finishes, users can move either side to keep exploring.
 # DFU no dimming: repeated clicks/dragging no longer fade the board or held pieces.
+# DFU local selection no rerun: clicking candidate pieces/answer rows no longer calls Streamlit, so no stale iframe fade.
 
 def mode_label():
     if is_unlimited_mode():
