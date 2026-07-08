@@ -56,6 +56,29 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 st.markdown("""
 <style>
 
+/* Responsive game layout: prevent board iframe from clipping when browser width changes. */
+[data-testid="stIFrame"],
+iframe {
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+}
+
+[data-testid="column"],
+[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"],
+.element-container {
+    min-width: 0 !important;
+    overflow: visible !important;
+}
+
+@media (max-width: 980px) {
+    .premove-side-wrap {
+        display:none !important;
+    }
+}
+
+
 /* Prevent Streamlit stale/rerun fade on custom components. */
 [data-testid="stElementContainer"],
 [data-testid="stIFrame"],
@@ -1233,10 +1256,25 @@ COMPONENT_HTML = r"""
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
 html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-family:Arial,sans-serif; scroll-behavior:auto!important; }
-.wrap { width:640px; margin:0 auto; background:#2b2b2b; padding:14px; border-radius:8px; box-shadow:0 18px 35px rgba(0,0,0,.22); user-select:none; position:relative; overflow:visible; }
+.wrap {
+    --board-size: min(576px, calc(100vw - 28px));
+    --square-size: calc(var(--board-size) / 8);
+    width:min(640px, 100vw);
+    max-width:100%;
+    box-sizing:border-box;
+    margin:0 auto;
+    background:#2b2b2b;
+    padding:clamp(8px, 1.8vw, 14px);
+    border-radius:8px;
+    box-shadow:0 18px 35px rgba(0,0,0,.22);
+    user-select:none;
+    position:relative;
+    overflow:visible;
+}
 .top {
-    width:576px;
-    height:42px;
+    width:var(--board-size);
+    max-width:100%;
+    height:clamp(34px, 7vw, 42px);
     margin:0 auto 10px;
     display:flex;
     justify-content:flex-start;
@@ -1276,8 +1314,9 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
     display:none !important;
 }
 .capture-row {
-    width:576px;
-    height:32px;
+    width:var(--board-size);
+    max-width:100%;
+    height:clamp(24px, 5.3vw, 32px);
     min-height:32px;
     max-height:32px;
     display:flex;
@@ -1289,7 +1328,7 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
     overflow:hidden;
 }
 .capture-row.bottom {
-    height:52px;
+    height:clamp(44px, 8.8vw, 52px);
     min-height:52px;
     max-height:52px;
     justify-content:space-between;
@@ -1306,7 +1345,7 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
     flex:1;
     overflow:hidden;
 }
-.cap { font-size:24px; line-height:1; opacity:1; }
+.cap { font-size:clamp(15px, 4.2vw, 24px); line-height:1; opacity:1; }
 .cap.white {
     color:#faf7ee;
     -webkit-text-stroke:.28px rgba(38,38,38,.60);
@@ -1323,8 +1362,8 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
         0 2px 4px rgba(0,0,0,.58);
 }
 .material-score {
-    min-width:42px;
-    height:28px;
+    min-width:clamp(34px, 7vw, 42px);
+    height:clamp(24px, 5vw, 28px);
     display:flex;
     align-items:center;
     justify-content:center;
@@ -1385,9 +1424,9 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
     color:#fff0f3;
 }
 .wrap.learning-mode .capture-row.bottom {
-    height:82px;
-    min-height:82px;
-    max-height:82px;
+    height:clamp(72px, 14vw, 82px);
+    min-height:clamp(72px, 14vw, 82px);
+    max-height:clamp(72px, 14vw, 82px);
     align-items:flex-start;
     justify-content:space-between;
     overflow:visible;
@@ -1403,12 +1442,34 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
 .wrap.learning-mode .learning-board-feedback {
     display:flex;
 }
-.board { width:576px; height:576px; margin:0 auto; display:grid; grid-template-columns:repeat(8,72px); grid-template-rows:repeat(8,72px); border:1px solid rgba(0,0,0,.38); touch-action:none; position:relative; }
-.square { width:72px; height:72px; position:relative; display:flex; align-items:center; justify-content:center; }
+.board {
+    width:var(--board-size);
+    height:var(--board-size);
+    max-width:100%;
+    max-height:calc(100vw - 28px);
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:repeat(8, 1fr);
+    grid-template-rows:repeat(8, 1fr);
+    border:1px solid rgba(0,0,0,.38);
+    touch-action:none;
+    position:relative;
+    overflow:hidden;
+}
+.square {
+    width:100%;
+    height:100%;
+    min-width:0;
+    min-height:0;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
 .light{background:#f0d9b5}.dark{background:#b58863}
-.rank-label{position:absolute;top:5px;left:7px;font-size:14px;font-weight:800;color:rgba(0,0,0,.48);z-index:6}.file-label{position:absolute;bottom:4px;right:7px;font-size:14px;font-weight:800;color:rgba(0,0,0,.48);z-index:6}
+.rank-label{position:absolute;top:clamp(2px,.9vw,5px);left:clamp(4px,1.1vw,7px);font-size:clamp(9px,2.2vw,14px);font-weight:800;color:rgba(0,0,0,.48);z-index:6}.file-label{position:absolute;bottom:clamp(2px,.8vw,4px);right:clamp(4px,1.1vw,7px);font-size:clamp(9px,2.2vw,14px);font-weight:800;color:rgba(0,0,0,.48);z-index:6}
 .piece {
-    font-size:65px;
+    font-size:clamp(28px, 10vw, 65px);
     line-height:1;
     cursor:grab;
     z-index:10;
@@ -1491,8 +1552,8 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
 .arrow-layer {
     position:absolute;
     inset:0;
-    width:576px;
-    height:576px;
+    width:100%;
+    height:100%;
     pointer-events:none;
     z-index:8;
     overflow:visible;
@@ -2531,21 +2592,46 @@ function premoveUci(from,to,promotion="q"){
     return ok?from+to+promo:null;
 }
 function premoveTargets(from){const targets=[];for(const f of files){for(let r=1;r<=8;r++){const to=f+r.toString();if(to!==from&&premoveUci(from,to))targets.push(to)}}return targets}
+function boardPixelSize(){
+    const board=document.getElementById("board");
+
+    if(!board)return 576;
+
+    const rect=board.getBoundingClientRect();
+    return Math.max(160, rect.width || board.offsetWidth || 576);
+}
+function squarePixelSize(){
+    return boardPixelSize()/8;
+}
+function updateResponsiveFrameHeight(){
+    requestAnimationFrame(()=>{
+        const h=Math.ceil(document.documentElement.scrollHeight || document.body.scrollHeight || 790);
+        setFrameHeight(h+8);
+    });
+}
+
 function squareCenter(sq){
     const df=displayFiles();
     const dr=displayRanks();
     const col=df.indexOf(sq[0]);
     const row=dr.indexOf(sq[1]);
     if(col<0||row<0)return null;
-    return {x:(col*72)+36,y:(row*72)+36};
+
+    const squareSize=squarePixelSize();
+
+    return {
+        x:(col*squareSize)+(squareSize/2),
+        y:(row*squareSize)+(squareSize/2)
+    };
 }
 function pointFromClient(x,y){
     const board=document.getElementById("board");
     if(!board)return null;
 
     const rect=board.getBoundingClientRect();
-    const px=Math.max(0,Math.min(576,x-rect.left));
-    const py=Math.max(0,Math.min(576,y-rect.top));
+    const size=rect.width||boardPixelSize();
+    const px=Math.max(0,Math.min(size,x-rect.left));
+    const py=Math.max(0,Math.min(size,y-rect.top));
 
     return {x:px,y:py};
 }
@@ -2956,9 +3042,9 @@ function positionPromotionPanel(to){
     const square=document.querySelector(`[data-square="${to}"]`);
     if(!panel||!board||!square)return;
 
-    const panelWidth=72;
-    const panelHeight=(72*4)+48;
-    const squareSize=square.offsetWidth||100;
+    const squareSize=square.offsetWidth||squarePixelSize()||72;
+    const panelWidth=Math.max(52, Math.min(72, squareSize));
+    const panelHeight=(panelWidth*4)+48;
 
     let left=board.offsetLeft+square.offsetLeft+((squareSize-panelWidth)/2);
     let top;
@@ -3956,7 +4042,7 @@ const cancelPromotionButton=document.getElementById("cancelPromotionButton");if(
 if(pendingPromotion){positionPromotionPanel(pendingPromotion.to);}
 updateMoveNavStatus();
 updateDfuRevealButton();
-setFrameHeight(790);restoreParentScroll()}
+updateResponsiveFrameHeight();restoreParentScroll()}
 function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;learningMode=args.learning_mode===true;dfuMode=args.dfu_mode===true;dfuCandidateSquares=Array.isArray(args.dfu_candidate_squares)?args.dfu_candidate_squares:[];dfuAnswerSquares=Array.isArray(args.dfu_answer_squares)?args.dfu_answer_squares:[];dfuSelectedSquare=args.dfu_selected_square||"";dfuCorrectSquare=args.dfu_correct_square||"";dfuCorrectMove=args.dfu_correct_move||"";dfuReplyMove=args.dfu_reply_move||"";dfuResult=args.dfu_result||"";dfuRevealAvailable=args.dfu_reveal_available===true;dfuRevealedAnswer=args.dfu_revealed_answer===true;dfuRevealMoves=Array.isArray(args.dfu_reveal_moves)?args.dfu_reveal_moves:[];dfuRevealPlayToken=args.dfu_reveal_play_token||"";dfuFreePlayAfterReveal=false;learningFeedbackMessage=args.learning_feedback_message||"";learningFeedbackResult=args.learning_feedback_result||"";learningGoodSquare=args.learning_good_square||"";learningPieceNote=args.learning_piece_note||"";learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;learningOffbookMode=false;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=dfuMode?("DFU — "+(playerColor==="black"?"Black":"White")):(learningMode?("War Room — White"):(previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White"))));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;clearEngineMoveGlow();setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();if(learningMode||dfuMode){showPlayerStartGlow=false;if(playerGlowTimer){clearTimeout(playerGlowTimer);playerGlowTimer=null}}else{showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000)}currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();updateLearningBoardFeedback();buildBoard(true);playDfuRevealLine();if(previewMode){updateStatus(learningMode?"War Room Academy — choose or play the plan.":"Ready board — choose 10-round or unlimited.");return}
 const shouldCountdown=currentRoundNumber===1;
 if(shouldCountdown){
@@ -4060,6 +4146,10 @@ document.addEventListener("mouseup",ev=>{
 document.addEventListener("dragover",ev=>{rememberDragPoint(ev);squareFromClientPoint(lastDragClientX,lastDragClientY)});
 document.addEventListener("drop",ev=>{rememberDragPoint(ev);finishDragAtPoint(ev)});
 document.addEventListener("dragend",ev=>finishDragAtPoint(ev));
+window.addEventListener("resize",()=>{
+    updateResponsiveFrameHeight();
+    buildBoard(false);
+});
 document.addEventListener("keydown",ev=>{
     const tag=(ev.target&&ev.target.tagName?ev.target.tagName.toLowerCase():"");
 
@@ -4079,7 +4169,7 @@ document.addEventListener("keydown",ev=>{
 });
 const dfuRevealButton=document.getElementById("dfuRevealAnswerButton");
 if(dfuRevealButton)dfuRevealButton.addEventListener("click",revealDfuAnswer);
-initStockfishWorker();setComponentReady();setFrameHeight(790);
+initStockfishWorker();setComponentReady();updateResponsiveFrameHeight();
 </script>
 </body>
 </html>
@@ -4228,6 +4318,7 @@ def is_master_tournament_mode():
 # DFU post-reveal free play: after the reveal line finishes, users can move either side to keep exploring.
 # DFU no dimming: repeated clicks/dragging no longer fade the board or held pieces.
 # DFU local selection no rerun: clicking candidate pieces/answer rows no longer calls Streamlit, so no stale iframe fade.
+# Responsive board fix: board/squares/pieces/arrows scale to iframe width instead of clipping.
 
 def mode_label():
     if is_unlimited_mode():
