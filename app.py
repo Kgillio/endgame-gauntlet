@@ -56,6 +56,154 @@ st.set_page_config(page_title="Endgame Gauntlet", page_icon="♟️", layout="wi
 st.markdown("""
 <style>
 
+/* DFU mode cards */
+.dfu-panel {
+    margin-top: 38px;
+    padding: 22px;
+    border-radius: 26px;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(255,132,0,.12), transparent 36%),
+        linear-gradient(180deg, rgba(8,18,36,.92), rgba(5,12,25,.94));
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 24px 70px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06);
+    color: #f8fbff;
+}
+.dfu-round {
+    color:#ff8a1f;
+    font-size:14px;
+    font-weight:1000;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+}
+.dfu-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#fff3d7;
+    font-size:32px;
+    font-weight:1000;
+    line-height:1.05;
+    margin-bottom:14px;
+}
+.dfu-mode-pill {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 13px;
+    border-radius:999px;
+    background:rgba(30,185,92,.13);
+    border:1px solid rgba(42,229,122,.38);
+    color:#c9ffd8;
+    font-weight:900;
+    margin-bottom:18px;
+}
+.dfu-divider {
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+    margin:16px 0;
+}
+.dfu-prompt {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:#ffffff;
+    font-size:22px;
+    font-weight:1000;
+    margin-bottom:6px;
+}
+.dfu-sub {
+    color:#aebbd3;
+    font-size:14px;
+    line-height:1.35;
+    margin:0 0 18px 36px;
+}
+.dfu-choice {
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:13px 14px;
+    margin:10px 0;
+    border-radius:16px;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.10);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.dfu-choice.selected {
+    border-color:rgba(255,132,0,.82);
+    background:linear-gradient(90deg, rgba(255,132,0,.15), rgba(255,255,255,.045));
+    box-shadow: 0 0 22px rgba(255,132,0,.14), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.dfu-choice.correct {
+    border-color:rgba(52,211,153,.80);
+    background:linear-gradient(90deg, rgba(52,211,153,.18), rgba(255,255,255,.045));
+}
+.dfu-choice.wrong {
+    border-color:rgba(255,91,118,.75);
+    background:linear-gradient(90deg, rgba(255,91,118,.16), rgba(255,255,255,.045));
+}
+.dfu-piece-icon {
+    width:42px;
+    text-align:center;
+    font-size:34px;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.42));
+}
+.dfu-choice-main {
+    flex:1;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+}
+.dfu-piece-name {
+    font-size:18px;
+    font-weight:1000;
+    color:#f8fbff;
+}
+.dfu-square {
+    color:#b8c0d4;
+    font-size:16px;
+    font-weight:900;
+}
+.dfu-radio {
+    width:24px;
+    height:24px;
+    border-radius:999px;
+    border:3px solid rgba(192,202,221,.72);
+    box-shadow: inset 0 0 0 4px rgba(0,0,0,.35);
+}
+.dfu-choice.selected .dfu-radio { border-color:#ff8a1f; background:#ff8a1f; }
+.dfu-choice.correct .dfu-radio { border-color:#34d399; background:#34d399; }
+.dfu-choice.wrong .dfu-radio { border-color:#ff5b76; background:#ff5b76; }
+.dfu-info {
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top:18px;
+    padding-top:15px;
+    border-top:1px solid rgba(255,255,255,.10);
+    color:#b7c2d6;
+    font-size:13px;
+    line-height:1.35;
+}
+.dfu-result {
+    margin-top:16px;
+    padding:13px 14px;
+    border-radius:16px;
+    font-size:14px;
+    line-height:1.35;
+    font-weight:850;
+}
+.dfu-result.correct {
+    border:1px solid rgba(52,211,153,.45);
+    background:rgba(52,211,153,.11);
+    color:#eafff2;
+}
+.dfu-result.wrong {
+    border:1px solid rgba(255,91,118,.45);
+    background:rgba(255,91,118,.10);
+    color:#ffe8ed;
+}
+
+
 .mode-intro-card {
     border-radius: 26px;
     padding: 24px 26px 22px;
@@ -482,6 +630,8 @@ TIME_INPUT_DIR = BASE_DIR / "instant_time_component"
 TIME_INPUT_FILE = TIME_INPUT_DIR / "index.html"
 AUTO_ADVANCE_DIR = BASE_DIR / "auto_advance_component"
 AUTO_ADVANCE_FILE = AUTO_ADVANCE_DIR / "index.html"
+DFU_PANEL_DIR = BASE_DIR / "dfu_panel_component"
+DFU_PANEL_FILE = DFU_PANEL_DIR / "index.html"
 
 DEFAULT_POSITIONS = [
     {"id":"rook_up_001","title":"Rook Up Endgame","opponent":"Master Defense Bot","year":"Sample","fen":"8/6k1/8/8/8/8/6K1/R7 w - - 0 1","player_color":"white","difficulty":1,"goal":"win","intro":"You are up a rook. Convert the endgame."},
@@ -685,6 +835,371 @@ window.addEventListener("message",event=>{
 });
 setComponentReady();
 setFrameHeight(0);
+</script>
+</body>
+</html>
+"""
+
+
+
+DFU_PANEL_HTML = r"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+html, body {
+    margin:0;
+    padding:0;
+    background:transparent;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow:hidden;
+}
+* { box-sizing:border-box; }
+.dfu-tower {
+    width:100%;
+    padding:0;
+    border-radius:26px;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(255,132,0,.12), transparent 36%),
+        linear-gradient(180deg, rgba(8,18,36,.96), rgba(5,12,25,.97));
+    border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 24px 70px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06);
+    color:#f8fbff;
+    overflow:hidden;
+}
+.dfu-header {
+    padding:22px 22px 20px;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(139,92,246,.16), transparent 35%),
+        linear-gradient(180deg, rgba(5,12,27,.96), rgba(6,13,29,.92));
+    border-bottom:1px solid rgba(255,255,255,.10);
+}
+.dfu-round {
+    color:#ff8a1f;
+    font-size:13px;
+    font-weight:1000;
+    letter-spacing:.10em;
+    text-transform:uppercase;
+    margin-bottom:9px;
+}
+.dfu-title-row {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+}
+.dfu-title {
+    font-family:Georgia, "Times New Roman", serif;
+    color:#fff3d7;
+    font-size:32px;
+    font-weight:1000;
+    line-height:1.05;
+}
+.dfu-mode-pill {
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    white-space:nowrap;
+    padding:7px 12px;
+    border-radius:999px;
+    background:rgba(30,185,92,.13);
+    border:1px solid rgba(42,229,122,.38);
+    color:#c9ffd8;
+    font-size:13px;
+    font-weight:950;
+}
+.dfu-divider {
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+    margin:20px 0;
+}
+.dfu-prompt {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:#ffffff;
+    font-size:21px;
+    font-weight:1000;
+    margin-bottom:7px;
+}
+.dfu-prompt-icon {
+    width:25px;
+    height:25px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:999px;
+    background:rgba(255,132,0,.12);
+    color:#ff8a1f;
+}
+.dfu-sub {
+    color:#aebbd3;
+    font-size:14px;
+    line-height:1.35;
+    margin-left:35px;
+}
+.dfu-body {
+    padding:12px 18px 18px;
+    background:
+        linear-gradient(180deg, rgba(16,29,50,.92), rgba(12,23,41,.96));
+}
+.dfu-choice {
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:14px 14px;
+    margin:10px 0;
+    border-radius:16px;
+    background:linear-gradient(180deg, rgba(54,70,96,.82), rgba(38,51,73,.86));
+    border:1px solid rgba(255,255,255,.11);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    color:#f8fbff;
+    cursor:pointer;
+    outline:none;
+    transition:transform .10s ease, border-color .10s ease, box-shadow .10s ease, background .10s ease;
+}
+.dfu-choice:hover {
+    transform:translateY(-1px);
+    border-color:rgba(255,132,0,.40);
+    box-shadow:0 8px 22px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.dfu-choice.selected {
+    border-color:rgba(255,132,0,.88);
+    background:linear-gradient(90deg, rgba(255,132,0,.20), rgba(44,56,79,.88));
+    box-shadow:0 0 22px rgba(255,132,0,.15), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.dfu-choice.correct {
+    border-color:rgba(52,211,153,.86);
+    background:linear-gradient(90deg, rgba(52,211,153,.22), rgba(44,56,79,.88));
+}
+.dfu-choice.wrong {
+    border-color:rgba(255,91,118,.82);
+    background:linear-gradient(90deg, rgba(255,91,118,.20), rgba(44,56,79,.88));
+}
+.dfu-choice:disabled {
+    cursor:default;
+}
+.dfu-piece-icon {
+    width:44px;
+    min-width:44px;
+    text-align:center;
+    font-size:35px;
+    line-height:1;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.42));
+}
+.dfu-choice-main {
+    flex:1;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+.dfu-piece-name {
+    font-size:18px;
+    font-weight:1000;
+    color:#f8fbff;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.dfu-square {
+    color:#b8c0d4;
+    font-size:16px;
+    font-weight:950;
+}
+.dfu-radio {
+    width:23px;
+    height:23px;
+    min-width:23px;
+    border-radius:999px;
+    border:3px solid rgba(192,202,221,.72);
+    box-shadow:inset 0 0 0 4px rgba(0,0,0,.35);
+}
+.dfu-choice.selected .dfu-radio { border-color:#ff8a1f; background:#ff8a1f; }
+.dfu-choice.correct .dfu-radio { border-color:#34d399; background:#34d399; }
+.dfu-choice.wrong .dfu-radio { border-color:#ff5b76; background:#ff5b76; }
+.dfu-result {
+    margin-top:12px;
+    padding:13px 14px;
+    border-radius:16px;
+    font-size:14px;
+    line-height:1.35;
+    font-weight:850;
+}
+.dfu-result.correct {
+    border:1px solid rgba(52,211,153,.45);
+    background:rgba(52,211,153,.11);
+    color:#eafff2;
+}
+.dfu-result.wrong {
+    border:1px solid rgba(255,91,118,.45);
+    background:rgba(255,91,118,.10);
+    color:#ffe8ed;
+}
+.dfu-info {
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top:14px;
+    padding-top:15px;
+    border-top:1px solid rgba(255,255,255,.10);
+    color:#b7c2d6;
+    font-size:13px;
+    line-height:1.35;
+}
+.dfu-next {
+    width:100%;
+    margin-top:13px;
+    border:0;
+    border-radius:16px;
+    padding:13px 16px;
+    color:white;
+    font-weight:1000;
+    font-size:15px;
+    cursor:pointer;
+    background:linear-gradient(180deg, #8b5cf6, #7446df);
+    box-shadow:0 10px 24px rgba(124,58,237,.24), inset 0 1px 0 rgba(255,255,255,.14);
+}
+.dfu-next:hover { filter:brightness(1.06); transform:translateY(-1px); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+function sendMessageToStreamlit(type,data){
+    window.parent.postMessage(Object.assign({isStreamlitMessage:true,type:type},data),"*");
+}
+function setComponentReady(){
+    sendMessageToStreamlit("streamlit:componentReady",{apiVersion:1});
+}
+function setFrameHeight(height){
+    sendMessageToStreamlit("streamlit:setFrameHeight",{height:height});
+}
+function setComponentValue(value){
+    sendMessageToStreamlit("streamlit:setComponentValue",{value:value});
+}
+function escapeHtml(value){
+    return String(value??"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+function render(args){
+    const root=document.getElementById("root");
+    const choices=Array.isArray(args.choices)?args.choices:[];
+    const selected=args.selected_square||"";
+    const correct=args.correct_square||"";
+    const result=args.result||"";
+    const resultMessage=args.result_message||"";
+    const revealed=args.revealed_answer===true;
+    const continuation=Array.isArray(args.continuation)?args.continuation:[];
+    const showContinuation=args.show_continuation===true;
+
+    const choiceHtml=choices.map(item=>{
+        const sq=item.square||"";
+        const classes=["dfu-choice"];
+
+        if(selected===sq)classes.push("selected");
+        if(result&&correct===sq)classes.push("correct");
+        else if(result==="wrong"&&selected===sq)classes.push("wrong");
+
+        const disabled=result?"disabled":"";
+
+        return `
+            <button class="${classes.join(" ")}" data-square="${escapeHtml(sq)}" ${disabled}>
+                <div class="dfu-piece-icon">${escapeHtml(item.icon||"♟")}</div>
+                <div class="dfu-choice-main">
+                    <div class="dfu-piece-name">${escapeHtml(item.name||"Piece")}</div>
+                    <div class="dfu-square">${escapeHtml(sq)}</div>
+                </div>
+                <div class="dfu-radio"></div>
+            </button>
+        `;
+    }).join("");
+
+    const resultHtml=resultMessage?`
+        <div class="dfu-result ${result==="correct"?"correct":"wrong"}">${escapeHtml(resultMessage)}</div>
+    `:"";
+
+    const canAdvance=result&&!(result==="wrong"&&!revealed);
+
+    const continuationHtml=(canAdvance&&showContinuation&&continuation.length)?`
+        <div class="dfu-info">
+            <span>💡</span>
+            <div><b>Move list:</b> ${continuation.map(escapeHtml).join(" &nbsp; ")}</div>
+        </div>
+    `:"";
+
+    const nextHtml=canAdvance?`<button class="dfu-next" id="nextButton">▶ Next DFU Puzzle</button>`:(result==="wrong"?`
+        <div class="dfu-info"><span>👁️</span><div>Click <b>Reveal Answer</b> on the board to watch the correct line play out.</div></div>
+    `:`
+        <div class="dfu-info"><span>ⓘ</span><div>You can answer from the list or directly on the board.</div></div>
+    `);
+
+    root.innerHTML=`
+        <div class="dfu-tower">
+            <div class="dfu-header">
+                <div class="dfu-round">Round ${escapeHtml(args.round||"1")} / ${escapeHtml(args.total||"1")}</div>
+                <div class="dfu-title-row">
+                    <div class="dfu-title">DFU</div>
+                    <div class="dfu-mode-pill">Easy Mode ●</div>
+                </div>
+                <div class="dfu-divider"></div>
+                <div class="dfu-prompt">
+                    <span class="dfu-prompt-icon">🎯</span>
+                    <span>${escapeHtml(args.prompt||"Select the piece to move")}</span>
+                </div>
+                <div class="dfu-sub">Pick the correct move order. Miss the order and the round is lost.</div>
+            </div>
+            <div class="dfu-body">
+                ${choiceHtml}
+                ${resultHtml}
+                ${continuationHtml}
+                ${nextHtml}
+            </div>
+        </div>
+    `;
+
+    root.querySelectorAll(".dfu-choice").forEach(btn=>{
+        btn.addEventListener("click",()=>{
+            const square=btn.getAttribute("data-square")||"";
+            if(!square||result)return;
+
+            setComponentValue({
+                action:"dfu_select_piece",
+                square:square,
+                nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
+            });
+        });
+    });
+
+    const next=document.getElementById("nextButton");
+
+    if(next){
+        next.addEventListener("click",()=>{
+            setComponentValue({
+                action:"dfu_next_round",
+                nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
+            });
+        });
+    }
+
+    requestAnimationFrame(()=>{
+        const h=document.documentElement.scrollHeight||document.body.scrollHeight||650;
+        setFrameHeight(h+2);
+    });
+}
+window.addEventListener("message",event=>{
+    if(event.data.type!=="streamlit:render")return;
+    render(event.data.args||{});
+});
+setComponentReady();
+setFrameHeight(650);
 </script>
 </body>
 </html>
@@ -1008,6 +1523,33 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
 .square.learning-good-square:hover .piece-purpose-note {
     opacity:1;
     transform:translate(-50%, 0);
+}
+.square.dfu-candidate-square {
+    box-shadow:
+        inset 0 0 0 999px rgba(59,130,246,.16),
+        inset 0 0 0 3px rgba(59,130,246,.88),
+        0 0 18px rgba(59,130,246,.30);
+}
+.square.dfu-candidate-square.dfu-selected-square {
+    box-shadow:
+        inset 0 0 0 999px rgba(255,132,0,.18),
+        inset 0 0 0 4px rgba(255,132,0,.95),
+        0 0 22px rgba(255,132,0,.38);
+}
+.square.dfu-candidate-square.dfu-correct-square {
+    box-shadow:
+        inset 0 0 0 999px rgba(52,211,153,.20),
+        inset 0 0 0 4px rgba(52,211,153,.95),
+        0 0 24px rgba(52,211,153,.38);
+}
+.square.dfu-candidate-square .piece {
+    filter: drop-shadow(0 0 7px rgba(59,130,246,.55)) drop-shadow(0 3px 3px rgba(0,0,0,.32));
+}
+.square.dfu-candidate-square.dfu-selected-square .piece {
+    filter: drop-shadow(0 0 9px rgba(255,132,0,.75)) drop-shadow(0 3px 3px rgba(0,0,0,.32));
+}
+.square.dfu-candidate-square.dfu-correct-square .piece {
+    filter: drop-shadow(0 0 9px rgba(52,211,153,.75)) drop-shadow(0 3px 3px rgba(0,0,0,.32));
 }
 .square.premove-from{box-shadow:inset 0 0 0 999px rgba(255,51,82,.18),inset 0 0 0 4px rgba(255,51,82,.88)}
 .square.premove-to{box-shadow:inset 0 0 0 999px rgba(255,51,82,.36),inset 0 0 0 5px rgba(255,51,82,.95)}
@@ -1341,7 +1883,52 @@ body.dragging-piece *,
     opacity: .96;
 }
 .piece.source-held {
-    opacity: .22;
+    opacity: 1 !important;
+    visibility: visible !important;
+    filter: none !important;
+}
+.dfu-reveal-answer-btn {
+    display:none;
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%, -50%);
+    z-index:50;
+    border:1px solid rgba(255,132,0,.72);
+    background:linear-gradient(180deg, #ff8a1f, #f26f00);
+    color:#fff;
+    font-weight:1000;
+    font-size:18px;
+    letter-spacing:.02em;
+    padding:15px 24px;
+    border-radius:18px;
+    cursor:pointer;
+    box-shadow:0 18px 42px rgba(0,0,0,.40), 0 0 28px rgba(255,132,0,.32);
+}
+.dfu-reveal-answer-btn.show {
+    display:block;
+}
+.dfu-reveal-answer-btn:hover {
+    filter:brightness(1.06);
+    transform:translate(-50%, -50%) translateY(-1px);
+}
+
+/* DFU/free-play should never visually dim or fade the board while clicking/thinking. */
+.wrap,
+.board,
+.square,
+.piece {
+    opacity: 1 !important;
+}
+
+.board.dim,
+.board.thinking,
+.wrap.dim,
+.wrap.thinking,
+.square.dim,
+.piece.dim {
+    opacity: 1 !important;
+    filter: none !important;
 }
 
 </style>
@@ -1351,6 +1938,7 @@ body.dragging-piece *,
   <div class="top"><div id="roundBadge" class="pill">Round 1 / 10</div><div id="gameStatus">Loading board...</div><div id="engineStatus" class="pill">Engine loading...</div></div>
   <div class="capture-row"><div id="capturedTop" class="capture-strip"></div></div>
   <div id="board" class="board"></div>
+  <button id="dfuRevealAnswerButton" class="dfu-reveal-answer-btn">Reveal Answer</button>
   <div id="promotionPanel" class="promotion-panel">
     <button data-promotion-piece="n" title="Knight">♘</button>
     <button data-promotion-piece="q" title="Queen">♕</button>
@@ -1401,6 +1989,7 @@ const files=["a","b","c","d","e","f","g","h"], ranks=["8","7","6","5","4","3","2
 let chess=null, playerColor="white", playerChar="w", currentFen="", currentToken=null, currentRoundNumber=1, currentTotalRounds=10, learningMode=false;
 let learningFeedbackMessage="", learningFeedbackResult="", learningGoodSquare="", learningPieceNote="", learningPurposeNotes=[];
 let learningExpectedMoves=[], learningOffbookMessage="Overruling decision made. The engine will answer — call the War Room if it gets dangerous.", learningOffbookMode=false, learningPendingOverruleMove="";
+let dfuMode=false, dfuCandidateSquares=[], dfuAnswerSquares=[], dfuSelectedSquare="", dfuCorrectSquare="", dfuCorrectMove="", dfuReplyMove="", dfuResult="", dfuRevealAvailable=false, dfuRevealedAnswer=false, dfuRevealMoves=[], dfuRevealPlayToken="", lastDfuRevealPlayToken="", dfuRevealPlaying=false, dfuFreePlayAfterReveal=false;
 let selectedSquare=null, draggedFrom=null, premoveQueue=[], visualPieces=null, showPlayerStartGlow=false, playerGlowTimer=null, engineGlowSquare=null, engineGlowTimer=null, roundEnded=false, lossOverlayVisible=false, dismissedLossToken=null, positionTimeline=[], timelineIndex=0, browsingTimeline=false, previewMode=false, pendingPromotion=null, countdownActive=false, countdownTimer=null, playerHasMovedThisRound=false, lastDragClientX=0, lastDragClientY=0, lastDragHoverSquare=null, lastMoveFrom=null, lastMoveTo=null;
 let timerInterval=null, remainingMs=10000, lastTickMs=Date.now(), timerTimeoutSent=false, currentTimerInitialSeconds=10, currentTimerIncrementSeconds=0, timerIncrementMs=0;const PREMOVE_PENALTY_MS=100;
 let engineWorker=null, engineReady=false, engineThinking=false, engineFallback=true, engineMoveTimeMs=1500;
@@ -1462,6 +2051,47 @@ function isWarRoomPlannedMove(uci){
 
         return move===expected||move.startsWith(expected);
     });
+}
+function updateDfuRevealButton(){
+    const btn=document.getElementById("dfuRevealAnswerButton");
+
+    if(!btn)return;
+
+    if(dfuMode&&dfuResult==="wrong"&&dfuRevealAvailable&&!dfuRevealedAnswer){
+        btn.classList.add("show");
+    }else{
+        btn.classList.remove("show");
+    }
+}
+function revealDfuAnswer(){
+    if(!(dfuMode&&dfuResult==="wrong"&&dfuRevealAvailable&&!dfuRevealedAnswer))return;
+
+    setComponentValue({
+        action:"dfu_reveal_answer",
+        nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
+    });
+}
+
+function isDfuCandidate(square){
+    return dfuMode&&Array.isArray(dfuCandidateSquares)&&dfuCandidateSquares.includes(square);
+}
+function isDfuAnswerSquare(square){
+    return dfuMode&&Array.isArray(dfuAnswerSquares)&&dfuAnswerSquares.includes(square);
+}
+function selectDfuSquare(square){
+    if(!dfuMode||!square)return false;
+
+    if(dfuAnswerSquares.length&&!(dfuAnswerSquares.includes(square))){
+        return false;
+    }
+
+    setComponentValue({
+        action:"dfu_select_piece",
+        square:square,
+        nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
+    });
+
+    return true;
 }
 function showLocalOffbookMessage(){
     learningFeedbackMessage=learningOffbookMessage||"Overruling decision made. Call the War Room if it gets dangerous.";
@@ -1743,7 +2373,98 @@ function rebuildVisualPiecesFromQueue(){const map=clonePieces(pieceMapFromChess(
 function legalUci(from,to,promotion="q"){if(!chess)return null;for(const m of chess.moves({square:from,verbose:true})){if(m.to===to)return from+to+(m.promotion?promotion:"")}return null}
 function playerPieceAt(sq){const p=currentPiecesForDisplay()[sq];return p&&p.colorChar===playerChar}
 function realOwnPieceAt(sq){const p=pieceMapFromChess(chess)[sq];return p&&p.colorChar===chess.turn()}
-function legalTargets(from){return chess?chess.moves({square:from,verbose:true}).map(m=>m.to):[]}
+function isDfuFreePlayActive(){
+    return dfuMode&&dfuRevealedAnswer&&dfuFreePlayAfterReveal&&!dfuRevealPlaying;
+}
+function fenWithSideToMove(fen,colorChar){
+    const parts=String(fen||"").split(" ");
+    if(parts.length<6)return fen;
+
+    parts[1]=colorChar==="b"?"b":"w";
+
+    // Avoid impossible stale en-passant state when users freely move either side.
+    parts[3]="-";
+
+    return parts.join(" ");
+}
+function chessForPieceSide(from){
+    if(!chess)return null;
+
+    const map=pieceMapFromChess(chess);
+    const piece=map[from];
+
+    if(!piece)return null;
+
+    try{
+        return new Chess(fenWithSideToMove(chess.fen(), piece.colorChar));
+    }catch(e){
+        return null;
+    }
+}
+function legalUciForPieceSide(from,to,promotion="q"){
+    if(!chess)return null;
+
+    const game=isDfuFreePlayActive()?chessForPieceSide(from):chess;
+
+    if(!game)return null;
+
+    for(const m of game.moves({square:from,verbose:true})){
+        if(m.to===to)return from+to+(m.promotion?promotion:"");
+    }
+
+    return null;
+}
+function legalTargets(from){
+    if(!chess)return [];
+
+    const game=isDfuFreePlayActive()?chessForPieceSide(from):chess;
+
+    if(!game)return [];
+
+    return game.moves({square:from,verbose:true}).map(m=>m.to);
+}
+function anyPieceAt(sq){
+    const p=pieceMapFromChess(chess)[sq];
+    return !!p;
+}
+function makeDfuFreePlayMove(from,to,promotion="q"){
+    if(!isDfuFreePlayActive())return false;
+
+    engineThinking=false;
+    clearEngineMoveGlow();
+    clearHeldPieceVisuals();
+
+    const uci=legalUciForPieceSide(from,to,promotion);
+
+    if(!uci)return false;
+
+    const game=chessForPieceSide(from);
+
+    if(!game)return false;
+
+    const move=game.move({from:from,to:to,promotion:promotion});
+
+    if(!move)return false;
+
+    chess=game;
+    currentFen=chess.fen();
+
+    setLastMove(from,to);
+    playerHasMovedThisRound=true;
+    recordTimeline();
+    playMoveOrCheckSound();
+
+    premoveQueue=[];
+    visualPieces=null;
+    selectedSquare=null;
+    draggedFrom=null;
+    lastDragHoverSquare=null;
+
+    buildBoard(true);
+    updateStatus("Free play — move either side.");
+
+    return true;
+}
 function squareFR(sq){return{f:files.indexOf(sq[0]),r:parseInt(sq[1],10)}}
 function squareFromFR(f,r){if(f<0||f>7||r<1||r>8)return null;return files[f]+r.toString()}
 function isClearLine(map,from,to,df,dr){let a=squareFR(from),b=squareFR(to);let f=a.f+df,r=a.r+dr;while(f!==b.f||r!==b.r){const sq=squareFromFR(f,r);if(!sq)return false;if(map[sq])return false;f+=df;r+=dr}return true}
@@ -2177,7 +2898,12 @@ function restoreHeldMoveDots(){
 function renderPremoveHighlights(){document.querySelectorAll(".square").forEach(s=>{s.classList.remove("premove-from","premove-to","premove-chain");const b=s.querySelector(".badge");if(b)b.remove()});premoveQueue.forEach((uci,i)=>{const from=uci.slice(0,2),to=uci.slice(2,4),fe=document.querySelector(`[data-square="${from}"]`),te=document.querySelector(`[data-square="${to}"]`);if(fe)fe.classList.add(i===0?"premove-from":"premove-chain");if(te)te.classList.add("premove-to")});const st=document.getElementById("premoveStatus");if(st){if(premoveQueue.length)st.textContent="Premove queued ("+premoveQueue.length+"/14, -0.1s each): "+premoveQueue.join(" • ");else if(engineThinking||isEngineTurn())st.textContent="Engine thinking — premove now.";else st.textContent=""}}
 function isRealPromotionMove(from,to){
     if(!chess)return false;
-    for(const m of chess.moves({square:from,verbose:true})){
+
+    const game=isDfuFreePlayActive()?chessForPieceSide(from):chess;
+
+    if(!game)return false;
+
+    for(const m of game.moves({square:from,verbose:true})){
         if(m.to===to&&m.promotion)return true;
     }
     return false;
@@ -2375,7 +3101,39 @@ function suspendPremoveQueue(message){
         setTimeout(()=>startEngineMove(),60);
     }
 }
-function makePlayerMove(from,to,promotion="q"){clearEngineMoveGlow();const uci=legalUci(from,to,promotion);if(!uci)return false;const move=chess.move({from:from,to:to,promotion:promotion});if(!move)return false;setLastMove(from,to);playerHasMovedThisRound=true;recordTimeline();playMoveOrCheckSound();addMoveIncrement();premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;buildBoard(true);updateStatus();checkRoundEnd();if(learningMode){
+function makePlayerMove(from,to,promotion="q"){clearEngineMoveGlow();const uci=legalUci(from,to,promotion);if(!uci)return false;const move=chess.move({from:from,to:to,promotion:promotion});if(!move)return false;setLastMove(from,to);playerHasMovedThisRound=true;recordTimeline();playMoveOrCheckSound();addMoveIncrement();premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;buildBoard(true);updateStatus();checkRoundEnd();if(dfuMode){
+    const wasCorrect=dfuCorrectMove&&(uci===dfuCorrectMove||uci.startsWith(dfuCorrectMove));
+
+    if(wasCorrect&&dfuReplyMove){
+        // Make DFU feel instant: play the computer reply inside the board before Streamlit reruns.
+        setTimeout(()=>{
+            applyDfuReplyLocally(dfuReplyMove);
+            setComponentValue({
+                action:"dfu_move",
+                move:uci,
+                from:from,
+                to:to,
+                correct_move:dfuCorrectMove,
+                reply_move:dfuReplyMove,
+                fen:chess.fen(),
+                nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
+            });
+        },120);
+    }else{
+        setComponentValue({
+            action:"dfu_move",
+            move:uci,
+            from:from,
+            to:to,
+            correct_move:dfuCorrectMove,
+            reply_move:dfuReplyMove,
+            fen:chess.fen(),
+            nonce:Date.now().toString()+"-"+Math.random().toString(16).slice(2)
+        });
+    }
+
+    return true;
+}if(learningMode){
     if(learningOffbookMode||!isWarRoomPlannedMove(uci)){
         learningPendingOverruleMove=uci;
         showLocalOffbookMessage();
@@ -2392,7 +3150,90 @@ function makePlayerMove(from,to,promotion="q"){clearEngineMoveGlow();const uci=l
     setComponentValue({action:"learning_move",move:uci,from:from,to:to,promotion:promotion,fen:chess.fen(),history:chess.history(),nonce:Date.now().toString()+"-"+Math.random().toString()});
     return true
 }if(!roundEnded&&!chess.game_over()&&chess.turn()!==playerChar)startEngineMove();return true}
-function tryMove(from,to){if(isRealPromotionMove(from,to)){showPromotionPicker(from,to,false);return true}return makePlayerMove(from,to,"q")}
+function applyDfuReplyLocally(replyUci){
+    replyUci=String(replyUci||"").toLowerCase();
+
+    if(!replyUci||replyUci.length<4)return false;
+    if(!chess||chess.game_over())return false;
+
+    const from=replyUci.slice(0,2);
+    const to=replyUci.slice(2,4);
+    const promo=replyUci.length>4?replyUci[4]:"q";
+    const legal=legalUci(from,to,promo);
+
+    if(!legal)return false;
+
+    const move=chess.move({from:from,to:to,promotion:promo});
+    if(!move)return false;
+
+    setLastMove(from,to);
+    recordTimeline();
+    playMoveOrCheckSound();
+    triggerEngineMoveGlow(to);
+    currentFen=chess.fen();
+    buildBoard(true);
+    updateStatus();
+
+    return true;
+}
+
+function playDfuRevealLine(){
+    if(!dfuMode||!dfuRevealedAnswer||!dfuRevealPlayToken||!Array.isArray(dfuRevealMoves)||!dfuRevealMoves.length){
+        if(dfuMode&&dfuRevealedAnswer&&!dfuRevealPlaying){
+            dfuFreePlayAfterReveal=true;
+        }
+        return;
+    }
+
+    if(lastDfuRevealPlayToken===dfuRevealPlayToken||dfuRevealPlaying){
+        return;
+    }
+
+    lastDfuRevealPlayToken=dfuRevealPlayToken;
+    dfuRevealPlaying=true;
+    clearEngineMoveGlow();
+
+    let i=0;
+
+    function step(){
+        if(i>=dfuRevealMoves.length){
+            dfuRevealPlaying=false;
+            engineThinking=false;
+            dfuFreePlayAfterReveal=true;
+            clearHeldPieceVisuals();
+            selectedSquare=null;
+            draggedFrom=null;
+            clearHighlights();
+            buildBoard(false);
+            updateStatus("Free play — move either side.");
+            return;
+        }
+
+        const uci=String(dfuRevealMoves[i]||"").toLowerCase();
+        i+=1;
+
+        if(uci&&uci.length>=4){
+            applyDfuReplyLocally(uci);
+        }
+
+        setTimeout(step,520);
+    }
+
+    setTimeout(step,380);
+}
+
+function tryMove(from,to){
+    if(isDfuFreePlayActive()){
+        if(isRealPromotionMove(from,to)){
+            showPromotionPicker(from,to,false);
+            return true;
+        }
+        return makeDfuFreePlayMove(from,to,"q");
+    }
+
+    if(isRealPromotionMove(from,to)){showPromotionPicker(from,to,false);return true}
+    return makePlayerMove(from,to,"q")
+}
 function tryExecutePremoveChain(){
     if(!isPlayerTurn())return;
 
@@ -2472,6 +3313,10 @@ function clearEngineMoveGlow(){
 function isPieceDraggableNow(piece){
     if(!piece||countdownActive||!chess||chess.game_over())return false;
 
+    if(isDfuFreePlayActive()){
+        return true;
+    }
+
     if(engineThinking||isEngineTurn()){
         return piece.colorChar===playerChar;
     }
@@ -2547,7 +3392,9 @@ function beginCustomPieceDrag(square,piece,pieceEl,ev){
 
     createCustomPieceGhost(pieceEl,ev);
 
-    if(engineThinking||isEngineTurn()){
+    if(isDfuFreePlayActive()){
+        highlightFrom(square);
+    }else if(engineThinking||isEngineTurn()){
         highlightPremoveFrom(square);
     }else{
         highlightFrom(square);
@@ -2603,6 +3450,10 @@ function finishCustomPieceDrag(ev){
         return true;
     }
 
+    if(dfuMode&&from&&isDfuAnswerSquare(from)){
+        selectDfuSquare(from);
+    }
+
     draggedFrom=null;
     selectedSquare=null;
     lastDragHoverSquare=null;
@@ -2616,6 +3467,14 @@ function finishCustomPieceDrag(ev){
 
     return true;
 }
+function clearHeldPieceVisuals(){
+    document.querySelectorAll(".piece.source-held,.piece.drag-held").forEach(p=>{
+        p.classList.remove("source-held","drag-held");
+        p.style.opacity="";
+        p.style.filter="";
+        p.style.visibility="";
+    });
+}
 function setDraggingCursor(on){
     document.documentElement.classList.toggle("dragging-piece",on);
     document.body.classList.toggle("dragging-piece",on);
@@ -2626,8 +3485,7 @@ function setDraggingCursor(on){
     }else{
         document.documentElement.style.removeProperty("cursor");
         document.body.style.removeProperty("cursor");
-        document.querySelectorAll(".piece.drag-held").forEach(p=>p.classList.remove("drag-held"));
-        document.querySelectorAll(".piece.source-held").forEach(p=>p.classList.remove("source-held"));
+        clearHeldPieceVisuals();
     }
 
     const wrap=document.querySelector(".wrap");
@@ -2700,8 +3558,8 @@ function finishDragAtPoint(ev){
     clearHighlights();
     renderPremoveHighlights();
 }
-function selectSquare(square){if(countdownActive)return;if(!chess||chess.game_over())return;if(!prepareBoardForInteraction())return;if(engineThinking||isEngineTurn()){if(!selectedSquare){if(playerPieceAt(square)){selectedSquare=square;highlightPremoveFrom(square)}return}if(selectedSquare===square){selectedSquare=null;clearHighlights();renderPremoveHighlights();return}if(queuePremove(selectedSquare,square)){selectedSquare=null;clearHighlights();renderPremoveHighlights();return}highlightPremoveFrom(selectedSquare);return}if(!selectedSquare){if(realOwnPieceAt(square)){selectedSquare=square;highlightFrom(square)}return}if(selectedSquare===square){selectedSquare=null;clearHighlights();renderPremoveHighlights();return}if(tryMove(selectedSquare,square))return;if(realOwnPieceAt(square)){selectedSquare=square;highlightFrom(square)}else{selectedSquare=null;clearHighlights();renderPremoveHighlights()}}
-function handleDrop(toSquare){if(countdownActive){draggedFrom=null;selectedSquare=null;lastDragHoverSquare=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();return}if(!draggedFrom)return;if(!prepareBoardForInteraction())return;if(engineThinking||isEngineTurn()){queuePremove(draggedFrom,toSquare);draggedFrom=null;selectedSquare=null;lastDragHoverSquare=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();clearHighlights();renderPremoveHighlights();return}tryMove(draggedFrom,toSquare);draggedFrom=null;selectedSquare=null;lastDragHoverSquare=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();clearHighlights();renderPremoveHighlights()}
+function selectSquare(square){if(countdownActive)return;if(!chess||chess.game_over())return;if(!prepareBoardForInteraction())return;if(isDfuFreePlayActive()){if(!selectedSquare){if(anyPieceAt(square)){selectedSquare=square;highlightFrom(square)}return}if(selectedSquare===square){selectedSquare=null;clearHighlights();renderPremoveHighlights();return}if(tryMove(selectedSquare,square))return;if(anyPieceAt(square)){selectedSquare=square;highlightFrom(square)}else{selectedSquare=null;clearHighlights();renderPremoveHighlights()}return}if(engineThinking||isEngineTurn()){if(!selectedSquare){if(playerPieceAt(square)){selectedSquare=square;highlightPremoveFrom(square)}return}if(selectedSquare===square){selectedSquare=null;clearHighlights();renderPremoveHighlights();return}if(queuePremove(selectedSquare,square)){selectedSquare=null;clearHighlights();renderPremoveHighlights();return}highlightPremoveFrom(selectedSquare);return}if(!selectedSquare){if(realOwnPieceAt(square)){selectedSquare=square;highlightFrom(square)}return}if(selectedSquare===square){selectedSquare=null;clearHighlights();renderPremoveHighlights();return}if(tryMove(selectedSquare,square))return;if(realOwnPieceAt(square)){selectedSquare=square;highlightFrom(square)}else{selectedSquare=null;clearHighlights();renderPremoveHighlights()}}
+function handleDrop(toSquare){if(countdownActive){draggedFrom=null;selectedSquare=null;lastDragHoverSquare=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();return}if(!draggedFrom)return;if(!prepareBoardForInteraction())return;if(!isDfuFreePlayActive()&&(engineThinking||isEngineTurn())){queuePremove(draggedFrom,toSquare);draggedFrom=null;selectedSquare=null;lastDragHoverSquare=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();clearHighlights();renderPremoveHighlights();return}tryMove(draggedFrom,toSquare);draggedFrom=null;selectedSquare=null;lastDragHoverSquare=null;setDraggingCursor(false);clearDragHover();clearMoveArrows();clearHighlights();renderPremoveHighlights()}
 function updateStatus(extra=""){
     const st=document.getElementById("gameStatus");
     if(!st||!chess)return;
@@ -3042,13 +3900,16 @@ function renderCaptured(){
 }
 function findKingSquare(color,game=chess){const map=pieceMapFromChess(game);for(const [sq,p] of Object.entries(map)){if(p.type==="k"&&p.colorChar===color)return sq}return null}
 function buildBoard(resetSelection=true){
+    if(!customPieceDragActive){
+        clearHeldPieceVisuals();
+    }
     const boardEl=document.getElementById("board");
     boardEl.oncontextmenu=(ev)=>{
         if(cancelPremovePlanFromRightClick(ev))return false;
         ev.preventDefault();
         return false;
     };
-    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");const purposeNoteForSquare=learningPurposeNoteForSquare(sq);if(learningMode&&purposeNoteForSquare)square.classList.add("learning-good-square");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");if(!browsingTimeline&&engineGlowSquare&&sq===engineGlowSquare)pe.classList.add("engine-move-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}if(learningMode&&purposeNoteForSquare){const note=document.createElement("div");note.className="piece-purpose-note";if(parseInt(rank,10)>=6)note.classList.add("down");note.textContent=purposeNoteForSquare;square.appendChild(note)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
+    boardEl.innerHTML="";const displayGame=getDisplayChess();const map=currentPiecesForDisplay();displayRanks().forEach((rank,ri)=>{displayFiles().forEach((file,fi)=>{const sq=file+rank;const square=document.createElement("div");square.className="square";square.dataset.square=sq;square.classList.add((ri+fi)%2===1?"dark":"light");if(userMarkedSquares.has(sq))square.classList.add("user-red-highlight");if(sq===lastMoveFrom||sq===lastMoveTo)square.classList.add("last-move");if(dfuMode&&(isDfuCandidate(sq)||(dfuCorrectSquare&&sq===dfuCorrectSquare))){square.classList.add("dfu-candidate-square");if(sq===dfuSelectedSquare)square.classList.add("dfu-selected-square");if(dfuCorrectSquare&&sq===dfuCorrectSquare)square.classList.add("dfu-correct-square")}const purposeNoteForSquare=learningPurposeNoteForSquare(sq);if(learningMode&&purposeNoteForSquare)square.classList.add("learning-good-square");if(file===displayFiles()[0]){const l=document.createElement("div");l.className="rank-label";l.textContent=rank;square.appendChild(l)}if(rank===displayRanks()[7]){const l=document.createElement("div");l.className="file-label";l.textContent=file;square.appendChild(l)}const king=displayGame.in_check()?findKingSquare(displayGame.turn(),displayGame):null;if(king===sq)square.classList.add("in-check");const piece=map[sq];if(piece){const pe=document.createElement("div");pe.className="piece "+piece.color;if(showPlayerStartGlow&&piece.colorChar===playerChar)pe.classList.add("player-start-glow");if(!browsingTimeline&&engineGlowSquare&&sq===engineGlowSquare)pe.classList.add("engine-move-glow");pe.textContent=piece.symbol;pe.draggable=false;pe.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});pe.addEventListener("mousedown",ev=>{unlockAudio();if(ev.button===0){beginCustomPieceDrag(sq,piece,pe,ev);return}beginBoardArrow(sq,ev)});square.appendChild(pe)}if(learningMode&&purposeNoteForSquare){const note=document.createElement("div");note.className="piece-purpose-note";if(parseInt(rank,10)>=6)note.classList.add("down");note.textContent=purposeNoteForSquare;square.appendChild(note)}square.addEventListener("contextmenu",ev=>{if(cancelPremovePlanFromRightClick(ev))return false;ev.preventDefault();ev.stopPropagation();return false});square.addEventListener("mousedown",ev=>{beginBoardArrow(sq,ev)});square.addEventListener("click",()=>{if(suppressNextSquareClick){suppressNextSquareClick=false;return}if(dfuMode&&isDfuAnswerSquare(sq)){selectDfuSquare(sq);return}clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
 const reviewButton=document.getElementById("reviewBoardButton");if(reviewButton)reviewButton.onclick=(ev)=>{ev.preventDefault();hideLossOverlay()};
 const lossTenRoundButton=document.getElementById("lossTenRoundButton");if(lossTenRoundButton)lossTenRoundButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("ten_round")};
 const lossUnlimitedButton=document.getElementById("lossUnlimitedButton");if(lossUnlimitedButton)lossUnlimitedButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("unlimited")};
@@ -3060,8 +3921,9 @@ document.querySelectorAll("[data-promotion-piece]").forEach(btn=>{btn.onclick=(e
 const cancelPromotionButton=document.getElementById("cancelPromotionButton");if(cancelPromotionButton)cancelPromotionButton.onclick=(ev)=>{ev.preventDefault();hidePromotionPicker();selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;clearHighlights();renderPremoveHighlights()};
 if(pendingPromotion){positionPromotionPanel(pendingPromotion.to);}
 updateMoveNavStatus();
+updateDfuRevealButton();
 setFrameHeight(790);restoreParentScroll()}
-function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;learningMode=args.learning_mode===true;learningFeedbackMessage=args.learning_feedback_message||"";learningFeedbackResult=args.learning_feedback_result||"";learningGoodSquare=args.learning_good_square||"";learningPieceNote=args.learning_piece_note||"";learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;learningOffbookMode=false;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=learningMode?("War Room — White"):(previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White")));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;clearEngineMoveGlow();setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();if(learningMode){showPlayerStartGlow=false;if(playerGlowTimer){clearTimeout(playerGlowTimer);playerGlowTimer=null}}else{showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000)}currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();updateLearningBoardFeedback();buildBoard(true);if(previewMode){updateStatus(learningMode?"War Room Academy — choose or play the plan.":"Ready board — choose 10-round or unlimited.");return}
+function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;learningMode=args.learning_mode===true;dfuMode=args.dfu_mode===true;dfuCandidateSquares=Array.isArray(args.dfu_candidate_squares)?args.dfu_candidate_squares:[];dfuAnswerSquares=Array.isArray(args.dfu_answer_squares)?args.dfu_answer_squares:[];dfuSelectedSquare=args.dfu_selected_square||"";dfuCorrectSquare=args.dfu_correct_square||"";dfuCorrectMove=args.dfu_correct_move||"";dfuReplyMove=args.dfu_reply_move||"";dfuResult=args.dfu_result||"";dfuRevealAvailable=args.dfu_reveal_available===true;dfuRevealedAnswer=args.dfu_revealed_answer===true;dfuRevealMoves=Array.isArray(args.dfu_reveal_moves)?args.dfu_reveal_moves:[];dfuRevealPlayToken=args.dfu_reveal_play_token||"";dfuFreePlayAfterReveal=false;learningFeedbackMessage=args.learning_feedback_message||"";learningFeedbackResult=args.learning_feedback_result||"";learningGoodSquare=args.learning_good_square||"";learningPieceNote=args.learning_piece_note||"";learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;learningOffbookMode=false;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=dfuMode?("DFU — "+(playerColor==="black"?"Black":"White")):(learningMode?("War Room — White"):(previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White"))));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;clearEngineMoveGlow();setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();if(learningMode||dfuMode){showPlayerStartGlow=false;if(playerGlowTimer){clearTimeout(playerGlowTimer);playerGlowTimer=null}}else{showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000)}currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();updateLearningBoardFeedback();buildBoard(true);playDfuRevealLine();if(previewMode){updateStatus(learningMode?"War Room Academy — choose or play the plan.":"Ready board — choose 10-round or unlimited.");return}
 const shouldCountdown=currentRoundNumber===1;
 if(shouldCountdown){
     startRoundCountdown(()=>{startTimer(currentTimerInitialSeconds);updateStatus();if(isEngineTurn())setTimeout(()=>startEngineMove(),250)});
@@ -3075,10 +3937,23 @@ if(shouldCountdown){
 window.addEventListener("message",event=>{
     if(event.data.type!=="streamlit:render")return;
     const args=event.data.args;
-    if(currentToken!==args.round_token||currentFen!==args.fen)initPosition(args);
+    if(currentToken!==args.round_token||(!dfuMode&&currentFen!==args.fen))initPosition(args);
     else {
         soundEnabled=args.sound_enabled!==false;
         learningMode=args.learning_mode===true;
+        dfuMode=args.dfu_mode===true;
+        dfuCandidateSquares=Array.isArray(args.dfu_candidate_squares)?args.dfu_candidate_squares:[];
+        dfuAnswerSquares=Array.isArray(args.dfu_answer_squares)?args.dfu_answer_squares:[];
+        dfuSelectedSquare=args.dfu_selected_square||"";
+        dfuCorrectSquare=args.dfu_correct_square||"";
+        dfuCorrectMove=args.dfu_correct_move||"";
+        dfuReplyMove=args.dfu_reply_move||"";
+        dfuResult=args.dfu_result||"";
+        dfuRevealAvailable=args.dfu_reveal_available===true;
+        dfuRevealedAnswer=args.dfu_revealed_answer===true;
+        dfuRevealMoves=Array.isArray(args.dfu_reveal_moves)?args.dfu_reveal_moves:[];
+        dfuRevealPlayToken=args.dfu_reveal_play_token||"";
+        currentFen=args.fen||currentFen;
         learningFeedbackMessage=args.learning_feedback_message||"";
         learningFeedbackResult=args.learning_feedback_result||"";
         learningGoodSquare=args.learning_good_square||"";
@@ -3087,6 +3962,8 @@ window.addEventListener("message",event=>{
         learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];
         learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;
         updateLearningBoardFeedback();
+        updateDfuRevealButton();
+        playDfuRevealLine();
         const nextElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));
         const nextSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));
         if(nextElo!==currentStockfishElo||nextSkill!==currentStockfishSkill){
@@ -3166,6 +4043,8 @@ document.addEventListener("keydown",ev=>{
         navigateMove(1);
     }
 });
+const dfuRevealButton=document.getElementById("dfuRevealAnswerButton");
+if(dfuRevealButton)dfuRevealButton.addEventListener("click",revealDfuAnswer);
 initStockfishWorker();setComponentReady();setFrameHeight(790);
 </script>
 </body>
@@ -3188,13 +4067,20 @@ def create_auto_advance_component():
     AUTO_ADVANCE_FILE.write_text(AUTO_ADVANCE_HTML, encoding="utf-8")
 
 
+def create_dfu_panel_component():
+    DFU_PANEL_DIR.mkdir(exist_ok=True)
+    DFU_PANEL_FILE.write_text(DFU_PANEL_HTML, encoding="utf-8")
+
+
 create_component()
 create_time_input_component()
 create_auto_advance_component()
+create_dfu_panel_component()
 
 browser_board = components.declare_component("browser_chess_component", path=str(COMPONENT_DIR))
 instant_time_input = components.declare_component("instant_time_component", path=str(TIME_INPUT_DIR))
 learning_auto_advance = components.declare_component("learning_auto_advance_component", path=str(AUTO_ADVANCE_DIR))
+dfu_panel_component = components.declare_component("dfu_panel_component", path=str(DFU_PANEL_DIR))
 
 
 def ensure_positions_file():
@@ -3297,6 +4183,16 @@ def is_master_tournament_mode():
 # Header cleanup: removed old browser-owned chessboard subtitle from the title banner.
 # Streamlit chrome cleanup: hide Share/Fork/GitHub/Manage App toolbar elements.
 # Mode intro modal: each game mode shows its own one-time briefing with Don't show again.
+# DFU mode: one-move gauntlet with highlighted candidate pieces and answer list.
+# DFU function fix: selecting a piece is not enough; the player must make the correct move.
+# DFU candidate limit: answer choices stay under half the board pieces; two-choice puzzles show no board highlights.
+# DFU wrong answer reveal: wrong moves immediately replace the board with the correct move shown.
+# DFU sequence mode: each DFU round is 3 correct player moves with computer replies between them.
+# DFU smooth sequence: correct steps play the computer reply locally and avoid board reinitialization.
+# DFU reveal answer: wrong moves stay on the lost position until the player clicks Reveal Answer on the board.
+# DFU full reveal animation: Reveal Answer resets to the pre-mistake position and auto-plays the correct line with computer replies.
+# DFU post-reveal free play: after the reveal line finishes, users can move either side to keep exploring.
+# DFU no dimming: repeated clicks/dragging no longer fade the board or held pieces.
 
 def mode_label():
     if is_unlimited_mode():
@@ -3497,6 +4393,25 @@ def init_state():
         "mode_intro_open": False,
         "mode_intro_pending_mode": "",
         "mode_intro_pending_learning_path": "opening",
+
+        # DFU one-move gauntlet
+        "dfu_active": False,
+        "dfu_round_index": 0,
+        "dfu_score": 0,
+        "dfu_puzzles": [],
+        "dfu_selected_square": "",
+        "dfu_result": None,
+        "dfu_result_message": "",
+        "dfu_display_fen": "",
+        "dfu_current_fen": "",
+        "dfu_lost_fen": "",
+        "dfu_revealed_answer": False,
+        "dfu_reveal_moves": [],
+        "dfu_reveal_play_token": "",
+        "dfu_step_index": 0,
+        "dfu_round_token": 0,
+        "dfu_show_continuation": True,
+        "dfu_difficulty": "Easy",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -3816,6 +4731,7 @@ def activate_learning_recovery(fen, user_move="", engine_move=""):
 
 
 def start_learning_mode(path="opening"):
+    st.session_state.dfu_active = False
     st.session_state.learning_active = True
     st.session_state.learning_lesson_key = "london_system"
     st.session_state.learning_path = path
@@ -4783,6 +5699,7 @@ def reset_run_stats(mode, positions):
 
 def start_game(positions, mode="ten_round"):
     st.session_state.learning_active = False
+    st.session_state.dfu_active = False
     if not positions:
         st.warning("No positions found. Add positions to positions.json first.")
         return
@@ -4799,6 +5716,7 @@ def start_game(positions, mode="ten_round"):
 
 def start_master_tournament(master_positions=None):
     st.session_state.learning_active = False
+    st.session_state.dfu_active = False
     # Reload from disk every time and throw away the current game before building a new one.
     master_positions = load_master_tournament_positions()
 
@@ -4902,6 +5820,24 @@ def apply_component_value(value):
     st.session_state.last_nonce = nonce
 
     action = value.get("action")
+
+    if action == "dfu_select_piece":
+        return handle_dfu_selection(value.get("square", ""))
+
+    if action == "dfu_move":
+        return handle_dfu_move(
+            value.get("move", ""),
+            from_square=value.get("from", ""),
+            to_square=value.get("to", ""),
+            fen=value.get("fen", ""),
+        )
+
+    if action == "dfu_reveal_answer":
+        return reveal_dfu_answer()
+
+    if action == "dfu_next_round":
+        next_dfu_round()
+        return True
 
     if action == "learning_auto_next":
         return complete_learning_auto_advance()
@@ -5619,6 +6555,731 @@ st.markdown(
 )
 
 
+DFU_PUZZLES = [
+    {
+        "id": "dfu_seq_001",
+        "title": "London Setup",
+        "fen": chess.STARTING_FEN,
+        "player_color": "white",
+        "difficulty": "Easy",
+        "explanation": "DFU is now a three-move order test. Make the right move, let the computer answer, then solve the next move in the same game.",
+        "sequence": [
+            {
+                "move": "d2d4",
+                "reply": "d7d5",
+                "candidates": ["d2", "e2", "g1", "c1"],
+                "prompt": "Move 1 of 3 — claim the center first.",
+                "explanation": "d4 plants the center flag and starts the London structure.",
+            },
+            {
+                "move": "c1f4",
+                "reply": "g8f6",
+                "candidates": ["c1", "g1", "e2", "b1"],
+                "prompt": "Move 2 of 3 — develop the London bishop.",
+                "explanation": "Bf4 gets the bishop outside the pawn wall before e3 closes the door.",
+            },
+            {
+                "move": "g1f3",
+                "reply": "",
+                "candidates": ["g1", "b1", "e2", "c2"],
+                "prompt": "Move 3 of 3 — reinforce the center.",
+                "explanation": "Nf3 protects the center and prepares the king to castle.",
+            },
+        ],
+    },
+    {
+        "id": "dfu_seq_002",
+        "title": "Passed Pawn Escort",
+        "fen": "6k1/8/8/4P3/8/8/4K3/8 w - - 0 1",
+        "player_color": "white",
+        "difficulty": "Easy",
+        "explanation": "The passer is powerful, but the king must help it finish the job.",
+        "sequence": [
+            {
+                "move": "e5e6",
+                "reply": "g8f8",
+                "candidates": ["e5", "e2"],
+                "prompt": "Move 1 of 3 — start the passer.",
+                "explanation": "Push the passed pawn while the enemy king is still far enough away.",
+            },
+            {
+                "move": "e2f3",
+                "reply": "f8e7",
+                "candidates": ["e2", "e6"],
+                "prompt": "Move 2 of 3 — bring the king closer.",
+                "explanation": "The king must escort the pawn instead of watching from behind.",
+            },
+            {
+                "move": "f3e4",
+                "reply": "",
+                "candidates": ["f3", "e6"],
+                "prompt": "Move 3 of 3 — improve the king.",
+                "explanation": "The king steps toward the center and supports the final promotion race.",
+            },
+        ],
+    },
+    {
+        "id": "dfu_seq_003",
+        "title": "Rook Cutoff",
+        "fen": "6k1/6pp/8/3R4/8/4K3/8/8 w - - 0 1",
+        "player_color": "white",
+        "difficulty": "Easy",
+        "explanation": "The rook wins by cutting the enemy king off and then improving the king.",
+        "sequence": [
+            {
+                "move": "d5d8",
+                "reply": "g8f7",
+                "candidates": ["d5", "e3", "g2", "h2"],
+                "prompt": "Move 1 of 3 — cut the king off.",
+                "explanation": "Rd8 forces the king away and starts shrinking the board.",
+            },
+            {
+                "move": "d8d7",
+                "reply": "f7g6",
+                "candidates": ["d8", "e3", "g2"],
+                "prompt": "Move 2 of 3 — keep the rook active.",
+                "explanation": "The rook stays active and keeps the enemy king boxed in.",
+            },
+            {
+                "move": "e3f4",
+                "reply": "",
+                "candidates": ["e3", "d7", "g2"],
+                "prompt": "Move 3 of 3 — bring the king in.",
+                "explanation": "The king joins the attack so the rook does not have to win alone.",
+            },
+        ],
+    },
+    {
+        "id": "dfu_seq_004",
+        "title": "Knight Route",
+        "fen": "5rk1/6pp/8/8/4N3/8/5PPP/6K1 w - - 0 1",
+        "player_color": "white",
+        "difficulty": "Easy",
+        "explanation": "The knight wins by jumping with tempo and keeping the enemy king uncomfortable.",
+        "sequence": [
+            {
+                "move": "e4f6",
+                "reply": "g8f7",
+                "candidates": ["e4", "g2", "g1", "h2"],
+                "prompt": "Move 1 of 3 — jump with check.",
+                "explanation": "Nf6+ uses the knight's fork power to force the king's hand.",
+            },
+            {
+                "move": "f6h7",
+                "reply": "f7e6",
+                "candidates": ["f6", "g2", "g1"],
+                "prompt": "Move 2 of 3 — take the loose pawn.",
+                "explanation": "Nxh7 keeps the knight active and wins material while the king is displaced.",
+            },
+            {
+                "move": "h7g5",
+                "reply": "",
+                "candidates": ["h7", "g2", "g1"],
+                "prompt": "Move 3 of 3 — return with tempo.",
+                "explanation": "Ng5+ brings the knight back into the fight and keeps the attack alive.",
+            },
+        ],
+    },
+    {
+        "id": "dfu_seq_005",
+        "title": "Bishop Route",
+        "fen": "6k1/6pp/8/8/2B5/8/5PPP/6K1 w - - 0 1",
+        "player_color": "white",
+        "difficulty": "Easy",
+        "explanation": "The bishop's job is to use long diagonals and keep improving with tempo.",
+        "sequence": [
+            {
+                "move": "c4e6",
+                "reply": "g8f8",
+                "candidates": ["c4", "g2", "f2", "g1"],
+                "prompt": "Move 1 of 3 — use the diagonal.",
+                "explanation": "Be6 activates the bishop and bothers the enemy king from distance.",
+            },
+            {
+                "move": "e6d7",
+                "reply": "f8e7",
+                "candidates": ["e6", "g2", "g1"],
+                "prompt": "Move 2 of 3 — keep the bishop active.",
+                "explanation": "Bd7 keeps the bishop in the fight while the king is forced back.",
+            },
+            {
+                "move": "d7g4",
+                "reply": "",
+                "candidates": ["d7", "g2", "f2"],
+                "prompt": "Move 3 of 3 — relocate with purpose.",
+                "explanation": "Bg4 keeps the bishop useful and aims at the enemy's weak squares.",
+            },
+        ],
+    },
+]
+
+
+
+PIECE_DISPLAY = {
+    chess.PAWN: ("Pawn", "♙"),
+    chess.KNIGHT: ("Knight", "♘"),
+    chess.BISHOP: ("Bishop", "♗"),
+    chess.ROOK: ("Rook", "♖"),
+    chess.QUEEN: ("Queen", "♕"),
+    chess.KING: ("King", "♔"),
+}
+
+
+def dfu_piece_info(fen, square):
+    try:
+        board = chess.Board(fen)
+        piece = board.piece_at(chess.parse_square(square))
+    except Exception:
+        piece = None
+
+    if not piece:
+        return ("Piece", "♟")
+
+    name, icon = PIECE_DISPLAY.get(piece.piece_type, ("Piece", "♟"))
+
+    if piece.color == chess.BLACK:
+        icon = {
+            chess.PAWN: "♟",
+            chess.KNIGHT: "♞",
+            chess.BISHOP: "♝",
+            chess.ROOK: "♜",
+            chess.QUEEN: "♛",
+            chess.KING: "♚",
+        }.get(piece.piece_type, icon)
+
+    return name, icon
+
+
+def dfu_piece_count_from_fen(fen):
+    try:
+        board = chess.Board(fen)
+        return len(board.piece_map())
+    except Exception:
+        return 0
+
+
+def dfu_choice_cap(fen):
+    piece_count = dfu_piece_count_from_fen(fen)
+
+    if piece_count <= 0:
+        return 4
+
+    # Keep choices low: always less than half the pieces on the board.
+    # Example: 8 pieces -> max 3 choices. 12 pieces -> max 5 choices.
+    less_than_half = max(2, (piece_count - 1) // 2)
+    return max(2, min(5, less_than_half))
+
+
+def dfu_highlight_squares_for_puzzle(puzzle):
+    candidates = list(puzzle.get("candidates", []))
+
+    # If there are only two answer choices, do not light up any board pieces.
+    # The player must use the list/board vision without obvious blue boxes.
+    if len(candidates) <= 2:
+        return []
+
+    return candidates
+
+
+def dfu_current_step(puzzle=None):
+    puzzle = puzzle or current_dfu_puzzle()
+    if not puzzle:
+        return {}
+
+    sequence = puzzle.get("sequence", [])
+    if not sequence:
+        return {}
+
+    idx = max(0, min(int(st.session_state.get("dfu_step_index", 0)), len(sequence) - 1))
+    return sequence[idx]
+
+
+def dfu_step_count(puzzle=None):
+    puzzle = puzzle or current_dfu_puzzle()
+    return len(puzzle.get("sequence", [])) if puzzle else 0
+
+
+def dfu_apply_moves_to_fen(fen, moves):
+    try:
+        board = chess.Board(fen)
+
+        for move_uci in moves:
+            move_uci = str(move_uci or "").strip().lower()
+            if not move_uci:
+                continue
+
+            move = chess.Move.from_uci(move_uci)
+
+            if move not in board.legal_moves:
+                return fen
+
+            board.push(move)
+
+        return board.fen()
+    except Exception:
+        return fen
+
+
+def dfu_fen_after_sequence_step(puzzle, step_index):
+    fen = puzzle.get("fen", chess.STARTING_FEN)
+    sequence = puzzle.get("sequence", [])
+
+    moves = []
+    for i in range(0, min(step_index + 1, len(sequence))):
+        step = sequence[i]
+        moves.append(step.get("move", ""))
+        if i < step_index:
+            moves.append(step.get("reply", ""))
+
+    return dfu_apply_moves_to_fen(fen, moves)
+
+
+def dfu_fen_after_correct_step(puzzle, step):
+    return dfu_apply_moves_to_fen(
+        st.session_state.get("dfu_current_fen") or puzzle.get("fen", chess.STARTING_FEN),
+        [step.get("move", "")]
+    )
+
+
+def normalize_dfu_puzzle(puzzle):
+    puzzle = dict(puzzle)
+    fen = puzzle.get("fen", chess.STARTING_FEN)
+
+    try:
+        board = chess.Board(fen)
+    except Exception:
+        board = chess.Board(chess.STARTING_FEN)
+        puzzle["fen"] = board.fen()
+        fen = board.fen()
+
+    sequence = list(puzzle.get("sequence", []))
+
+    if not sequence and puzzle.get("correct_move"):
+        sequence = [{
+            "move": puzzle.get("correct_move", ""),
+            "reply": "",
+            "candidates": puzzle.get("candidates", []),
+            "prompt": puzzle.get("prompt", "Select the piece to move"),
+            "explanation": puzzle.get("explanation", ""),
+        }]
+
+    normalized_sequence = []
+    current_fen = fen
+
+    for step_index, raw_step in enumerate(sequence[:3]):
+        step = dict(raw_step)
+        move_uci = str(step.get("move", "")).strip().lower()
+
+        if len(move_uci) < 4:
+            continue
+
+        correct = move_uci[:2]
+        step["correct_square"] = correct
+        step["correct_move"] = move_uci
+
+        try:
+            step_board = chess.Board(current_fen)
+        except Exception:
+            step_board = board
+
+        raw_candidates = []
+        for sq in step.get("candidates", []):
+            if not isinstance(sq, str) or len(sq) != 2:
+                continue
+
+            try:
+                parsed = chess.parse_square(sq)
+            except ValueError:
+                continue
+
+            if step_board.piece_at(parsed) and sq not in raw_candidates:
+                raw_candidates.append(sq)
+
+        if correct and correct not in raw_candidates:
+            raw_candidates.insert(0, correct)
+
+        cap = dfu_choice_cap(current_fen)
+        wrongs = [sq for sq in raw_candidates if sq != correct]
+        candidates = [correct] if correct else []
+        candidates.extend(wrongs[: max(0, cap - len(candidates))])
+
+        if correct and len(candidates) < min(3, cap):
+            correct_piece = None
+            try:
+                correct_piece = step_board.piece_at(chess.parse_square(correct))
+            except Exception:
+                correct_piece = None
+
+            board_squares = []
+            if correct_piece:
+                for sq_idx, piece in step_board.piece_map().items():
+                    sq_name = chess.square_name(sq_idx)
+                    if sq_name == correct or sq_name in candidates:
+                        continue
+                    if piece.color == correct_piece.color:
+                        board_squares.append(sq_name)
+
+            for sq_idx, piece in step_board.piece_map().items():
+                sq_name = chess.square_name(sq_idx)
+                if sq_name != correct and sq_name not in candidates and sq_name not in board_squares:
+                    board_squares.append(sq_name)
+
+            for sq_name in board_squares:
+                if len(candidates) >= cap:
+                    break
+                candidates.append(sq_name)
+
+        step["candidates"] = candidates[:cap]
+        step["highlight_squares"] = dfu_highlight_squares_for_puzzle({"candidates": step["candidates"]})
+        step["prompt"] = step.get("prompt") or f"Move {step_index + 1} of 3 — choose the correct move order."
+        step["explanation"] = step.get("explanation") or puzzle.get("explanation", "")
+        normalized_sequence.append(step)
+
+        current_fen = dfu_apply_moves_to_fen(current_fen, [step.get("move", ""), step.get("reply", "")])
+
+    puzzle["sequence"] = normalized_sequence
+    first_step = normalized_sequence[0] if normalized_sequence else {}
+    puzzle["candidates"] = first_step.get("candidates", [])
+    puzzle["highlight_squares"] = first_step.get("highlight_squares", [])
+    puzzle["correct_square"] = first_step.get("correct_square", "")
+    puzzle["correct_move"] = first_step.get("correct_move", "")
+    puzzle["player_color"] = puzzle.get("player_color", "white")
+    puzzle["difficulty"] = puzzle.get("difficulty", "Easy")
+    return puzzle
+
+def load_dfu_puzzles():
+    puzzles = [normalize_dfu_puzzle(item) for item in DFU_PUZZLES]
+    puzzles = [item for item in puzzles if item.get("sequence")]
+
+    random.SystemRandom().shuffle(puzzles)
+    return puzzles
+
+
+def current_dfu_puzzle():
+    puzzles = st.session_state.get("dfu_puzzles", [])
+    if not st.session_state.get("dfu_active") or not puzzles:
+        return None
+
+    idx = max(0, min(int(st.session_state.dfu_round_index), len(puzzles) - 1))
+    return puzzles[idx]
+
+
+def start_dfu_mode():
+    st.session_state.learning_active = False
+    st.session_state.game_active = False
+    st.session_state.game_completed = False
+    st.session_state.round_result = None
+    st.session_state.round_result_detail = ""
+
+    puzzles = load_dfu_puzzles()
+
+    if not puzzles:
+        st.warning("No DFU puzzles are loaded yet.")
+        return
+
+    st.session_state.dfu_active = True
+    st.session_state.dfu_round_index = 0
+    st.session_state.dfu_score = 0
+    st.session_state.dfu_puzzles = puzzles
+    st.session_state.dfu_selected_square = ""
+    st.session_state.dfu_result = None
+    st.session_state.dfu_result_message = ""
+    st.session_state.dfu_display_fen = ""
+    st.session_state.dfu_lost_fen = ""
+    st.session_state.dfu_revealed_answer = False
+    st.session_state.dfu_reveal_moves = []
+    st.session_state.dfu_reveal_play_token = ""
+    st.session_state.dfu_current_fen = puzzles[0].get("fen", chess.STARTING_FEN)
+    st.session_state.dfu_step_index = 0
+    st.session_state.dfu_round_token += 1
+
+
+def stop_dfu_mode():
+    st.session_state.dfu_active = False
+    st.session_state.dfu_selected_square = ""
+    st.session_state.dfu_result = None
+    st.session_state.dfu_result_message = ""
+    st.session_state.dfu_display_fen = ""
+    st.session_state.dfu_lost_fen = ""
+    st.session_state.dfu_revealed_answer = False
+    st.session_state.dfu_reveal_moves = []
+    st.session_state.dfu_reveal_play_token = ""
+    st.session_state.dfu_current_fen = ""
+    st.session_state.dfu_step_index = 0
+    st.session_state.dfu_round_token += 1
+
+
+def dfu_fen_after_correct_move(puzzle):
+    step = dfu_current_step(puzzle)
+    return dfu_fen_after_correct_step(puzzle, step)
+
+
+def handle_dfu_selection(square):
+    puzzle = current_dfu_puzzle()
+
+    if not puzzle or st.session_state.dfu_result:
+        return False
+
+    square = str(square or "").strip().lower()
+
+    step = dfu_current_step(puzzle)
+
+    if square not in step.get("candidates", []):
+        return False
+
+    # In DFU, selecting a row/piece only locks in the candidate.
+    # The player must still move that piece to the correct square to solve it.
+    st.session_state.dfu_selected_square = square
+    st.session_state.dfu_result = None
+    st.session_state.dfu_result_message = ""
+    st.session_state.dfu_display_fen = ""
+    st.session_state.dfu_lost_fen = ""
+    st.session_state.dfu_revealed_answer = False
+    st.session_state.dfu_reveal_moves = []
+    st.session_state.dfu_reveal_play_token = ""
+
+    return True
+
+
+def handle_dfu_move(move_uci, from_square="", to_square="", fen=""):
+    puzzle = current_dfu_puzzle()
+
+    if not puzzle or st.session_state.dfu_result:
+        return False
+
+    step = dfu_current_step(puzzle)
+
+    if not step:
+        return False
+
+    move_uci = str(move_uci or "").strip().lower()
+    from_square = str(from_square or move_uci[:2]).strip().lower()
+    to_square = str(to_square or move_uci[2:4]).strip().lower()
+    correct_move = str(step.get("correct_move", "")).strip().lower()
+
+    if from_square in step.get("candidates", []):
+        st.session_state.dfu_selected_square = from_square
+
+    if correct_move and (move_uci == correct_move or move_uci.startswith(correct_move)):
+        current_fen = st.session_state.get("dfu_current_fen") or puzzle.get("fen", chess.STARTING_FEN)
+        next_fen = dfu_apply_moves_to_fen(current_fen, [correct_move, step.get("reply", "")])
+
+        if st.session_state.dfu_step_index + 1 >= dfu_step_count(puzzle):
+            st.session_state.dfu_score += 1
+            next_dfu_round()
+            return True
+
+        st.session_state.dfu_step_index += 1
+        st.session_state.dfu_current_fen = next_fen
+        st.session_state.dfu_display_fen = ""
+        st.session_state.dfu_lost_fen = ""
+        st.session_state.dfu_revealed_answer = False
+        st.session_state.dfu_selected_square = ""
+        st.session_state.dfu_result = None
+        st.session_state.dfu_result_message = ""
+        # Do not bump dfu_round_token here. The browser already played the move/reply,
+        # so keeping the token steady prevents the board from blinking or reinitializing.
+        return True
+
+    st.session_state.dfu_result = "wrong"
+    st.session_state.dfu_result_message = (
+        "Move order lost. The board stays where you missed it. "
+        "Click Reveal Answer on the board when you want to see the right move."
+    )
+    st.session_state.dfu_lost_fen = str(fen or "").strip()
+    st.session_state.dfu_display_fen = ""
+    st.session_state.dfu_revealed_answer = False
+
+    return True
+
+def dfu_remaining_reveal_moves(puzzle):
+    sequence = puzzle.get("sequence", [])
+    start_index = max(0, min(int(st.session_state.get("dfu_step_index", 0)), len(sequence)))
+
+    moves = []
+    for step in sequence[start_index:]:
+        move = str(step.get("move", "")).strip().lower()
+        reply = str(step.get("reply", "")).strip().lower()
+
+        if move:
+            moves.append(move)
+
+        if reply:
+            moves.append(reply)
+
+    return moves
+
+
+def reveal_dfu_answer():
+    puzzle = current_dfu_puzzle()
+
+    if not puzzle or st.session_state.get("dfu_result") != "wrong":
+        return False
+
+    step = dfu_current_step(puzzle)
+
+    if not step:
+        return False
+
+    correct_name, _ = dfu_piece_info(
+        st.session_state.get("dfu_current_fen") or puzzle["fen"],
+        step["correct_square"],
+    )
+
+    step_number = int(st.session_state.get("dfu_step_index", 0)) + 1
+    reveal_moves = dfu_remaining_reveal_moves(puzzle)
+    move_list = "  ".join(
+        f"{i + 1}. {s.get('move', '')}"
+        for i, s in enumerate(puzzle.get("sequence", []))
+    )
+
+    st.session_state.dfu_revealed_answer = True
+
+    # Start the reveal from the position before the mistake, then let the board
+    # automatically play the correct player move(s) and computer replies.
+    st.session_state.dfu_display_fen = (
+        st.session_state.get("dfu_current_fen")
+        or puzzle.get("fen", chess.STARTING_FEN)
+    )
+    st.session_state.dfu_reveal_moves = reveal_moves
+    st.session_state.dfu_reveal_play_token = f"reveal-{st.session_state.dfu_round_index}-{st.session_state.dfu_step_index}-{time.time_ns()}"
+
+    st.session_state.dfu_result_message = (
+        f"Answer revealed. Watch the board play the correct line. "
+        f"Move {step_number} is the {correct_name} from {step['correct_square']} because "
+        f"{step.get('explanation', puzzle.get('explanation', ''))} "
+        f"Move list: {move_list}"
+    )
+
+    # Reveal is intentional, so a board refresh is fine here.
+    st.session_state.dfu_round_token += 1
+    return True
+
+
+def next_dfu_round():
+    if not st.session_state.get("dfu_active"):
+        return
+
+    if st.session_state.dfu_round_index + 1 >= len(st.session_state.dfu_puzzles):
+        st.session_state.dfu_round_index = 0
+        st.session_state.dfu_puzzles = load_dfu_puzzles()
+    else:
+        st.session_state.dfu_round_index += 1
+
+    puzzle = current_dfu_puzzle()
+
+    st.session_state.dfu_selected_square = ""
+    st.session_state.dfu_result = None
+    st.session_state.dfu_result_message = ""
+    st.session_state.dfu_display_fen = ""
+    st.session_state.dfu_lost_fen = ""
+    st.session_state.dfu_revealed_answer = False
+    st.session_state.dfu_reveal_moves = []
+    st.session_state.dfu_reveal_play_token = ""
+    st.session_state.dfu_current_fen = puzzle.get("fen", chess.STARTING_FEN) if puzzle else ""
+    st.session_state.dfu_step_index = 0
+    st.session_state.dfu_round_token += 1
+
+def render_dfu_left_panel():
+    puzzle = current_dfu_puzzle()
+
+    if not puzzle:
+        return
+
+    step = dfu_current_step(puzzle)
+    board_fen = st.session_state.get("dfu_current_fen") or puzzle.get("fen", chess.STARTING_FEN)
+    total = len(st.session_state.get("dfu_puzzles", [])) or 1
+    step_total = dfu_step_count(puzzle) or 3
+    step_number = int(st.session_state.get("dfu_step_index", 0)) + 1
+
+    choices = []
+    for sq in step.get("candidates", []):
+        name, icon = dfu_piece_info(board_fen, sq)
+        choices.append({
+            "square": sq,
+            "name": name,
+            "icon": icon,
+        })
+
+    value = dfu_panel_component(
+        round=st.session_state.dfu_round_index + 1,
+        total=total,
+        prompt=f"Move {step_number} / {step_total} · {step.get('prompt', 'Choose the correct move order.')}",
+        choices=choices,
+        selected_square=st.session_state.get("dfu_selected_square", ""),
+        correct_square=step.get("correct_square", ""),
+        result=st.session_state.get("dfu_result") or "",
+        result_message=st.session_state.get("dfu_result_message", ""),
+        revealed_answer=bool(st.session_state.get("dfu_revealed_answer")),
+        continuation=[
+            f"{i + 1}. {s.get('move', '')}"
+            for i, s in enumerate(puzzle.get("sequence", []))
+        ],
+        show_continuation=bool(st.session_state.get("dfu_show_continuation")),
+        key=f"dfu_panel_{st.session_state.dfu_round_token}_{st.session_state.get('dfu_step_index', 0)}",
+        default=None,
+    )
+
+    if apply_component_value(value):
+        st.rerun()
+
+
+def render_dfu_board():
+    puzzle = current_dfu_puzzle()
+
+    if not puzzle:
+        st.info("Start DFU to load a puzzle.")
+        return
+
+    step = dfu_current_step(puzzle)
+    board_fen = (
+        st.session_state.get("dfu_display_fen")
+        or (
+            st.session_state.get("dfu_lost_fen")
+            if st.session_state.get("dfu_result") == "wrong" and not st.session_state.get("dfu_revealed_answer")
+            else ""
+        )
+        or st.session_state.get("dfu_current_fen")
+        or puzzle["fen"]
+    )
+
+    value = browser_board(
+        fen=board_fen,
+        position_id=puzzle.get("id", "dfu_position"),
+        player_color=puzzle.get("player_color", "white"),
+        round_token=st.session_state.dfu_round_token,
+        sound_enabled=st.session_state.sound_enabled,
+        timer_initial_seconds=999,
+        timer_increment_seconds=0,
+        engine_move_time_ms=2100,
+        stockfish_elo=800,
+        stockfish_skill=0,
+        round_number=st.session_state.dfu_round_index + 1,
+        total_rounds=len(st.session_state.get("dfu_puzzles", [])) or 1,
+        preview_mode=True,
+        dfu_mode=True,
+        dfu_candidate_squares=step.get("highlight_squares", []),
+        dfu_answer_squares=step.get("candidates", []),
+        dfu_selected_square=st.session_state.get("dfu_selected_square", ""),
+        dfu_correct_square=(step.get("correct_move", "")[2:4] if st.session_state.get("dfu_result") == "wrong" else (step.get("correct_square", "") if st.session_state.get("dfu_result") else "")),
+        dfu_correct_move=step.get("correct_move", ""),
+        dfu_reply_move=step.get("reply", ""),
+        dfu_result=st.session_state.get("dfu_result") or "",
+        dfu_reveal_available=(st.session_state.get("dfu_result") == "wrong"),
+        dfu_revealed_answer=bool(st.session_state.get("dfu_revealed_answer")),
+        dfu_reveal_moves=st.session_state.get("dfu_reveal_moves", []),
+        dfu_reveal_play_token=st.session_state.get("dfu_reveal_play_token", ""),
+        round_result=None,
+        round_result_detail="",
+        key="browser_chess_dfu_component",
+        default=None,
+    )
+
+    if apply_component_value(value):
+        st.rerun()
+
+
+
 MODE_INTRO_DATA = {
     "ten_round": {
         "icon": "⚔️",
@@ -5672,6 +7333,19 @@ MODE_INTRO_DATA = {
         "warning": "Be aware: you can lose the war if you keep playing the wrong moves and never recover.",
         "button": "Enter War Room Academy",
     },
+    "dfu": {
+        "icon": "🎯",
+        "kicker": "One-Move Mode",
+        "title": "DFU",
+        "text": "Find the correct three-move order. You move, the computer replies, then you must find the next correct move.",
+        "rules": [
+            ("🔵", "Click a highlighted piece or choose from the answer list."),
+            ("🧩", "Each round is a three-move sequence in the same game."),
+            ("💡", "Miss the move order and the round is lost."),
+        ],
+        "warning": "",
+        "button": "Enter DFU",
+    },
 }
 
 
@@ -5690,6 +7364,10 @@ def execute_mode_start(mode, positions, master_tournament_positions, learning_pa
 
     if mode == "learning":
         start_learning_mode(learning_path or "opening")
+        return
+
+    if mode == "dfu":
+        start_dfu_mode()
         return
 
 
@@ -5815,75 +7493,79 @@ render_mode_intro_modal(positions, master_tournament_positions)
 pos = current_position() or get_preview_position(positions)
 is_preview_board = not st.session_state.game_active
 
-left_deco_col, board_col, side_col = st.columns([0.52, 2.65, 1.10], gap="small")
+left_deco_col, board_col, side_col = st.columns([1.32, 2.18, 0.95] if st.session_state.get("dfu_active") else [0.52, 2.65, 1.10], gap="small")
 
 with left_deco_col:
-    ladder_fill = overall_ladder_progress_percent()
-    ladder_title = current_title_info()
-    ladder_next = next_title_info()
-    ladder_next_text = (
-        f"Next: {ladder_next['short']} {ladder_next['rating']}"
-        if ladder_next
-        else "Top title unlocked"
-    )
-    ladder_ticks = left_ladder_tick_html()
-    promoted = st.session_state.pending_title_popup
-
-    title_toast_html = ""
-    if promoted:
-        toast_next = (
-            f"Next: {ladder_next['short']} at {ladder_next['rating']}"
+    if st.session_state.get("dfu_active"):
+        render_dfu_left_panel()
+    else:
+        ladder_fill = overall_ladder_progress_percent()
+        ladder_title = current_title_info()
+        ladder_next = next_title_info()
+        ladder_next_text = (
+            f"Next: {ladder_next['short']} {ladder_next['rating']}"
             if ladder_next
             else "Top title unlocked"
         )
-        title_toast_html = (
-            '<div class="left-title-toast">'
-            '<div class="toast-small">Promoted</div>'
-            f'<div class="toast-title">You made {promoted["short"]}</div>'
-            f'<div class="toast-full">{promoted["full"]}</div>'
-            f'<div class="toast-next">Rating {st.session_state.player_rating}<br>{toast_next}</div>'
+        ladder_ticks = left_ladder_tick_html()
+        promoted = st.session_state.pending_title_popup
+
+        title_toast_html = ""
+        if promoted:
+            toast_next = (
+                f"Next: {ladder_next['short']} at {ladder_next['rating']}"
+                if ladder_next
+                else "Top title unlocked"
+            )
+            title_toast_html = (
+                '<div class="left-title-toast">'
+                '<div class="toast-small">Promoted</div>'
+                f'<div class="toast-title">You made {promoted["short"]}</div>'
+                f'<div class="toast-full">{promoted["full"]}</div>'
+                f'<div class="toast-next">Rating {st.session_state.player_rating}<br>{toast_next}</div>'
+                '</div>'
+            )
+
+        # Build this as one clean HTML string so Markdown cannot treat the indented
+        # HTML as a literal code block.
+        left_ladder_html = (
+            '<div class="premove-side-wrap">'
+            '<div class="premove-side-card">'
+            '<div class="word-stack" aria-label="premoves takes takes takes">'
+            '<span class="stack-line line-premoves">PREMOVES</span>'
+            '<span class="stack-line line-takes-1">TAKES</span>'
+            '<span class="stack-line line-takes-2">TAKES</span>'
+            '<span class="stack-line line-takes-3">TAKES</span>'
+            '</div>'
+            f'<div class="left-ladder-card" style="--fill-height:{ladder_fill}%">'
+            '<div class="left-ladder-title">Master Ladder</div>'
+            f'<div class="left-ladder-rating">{st.session_state.player_rating}</div>'
+            '<div class="left-ladder-track">'
+            f'<div class="left-ladder-fill" style="height:{ladder_fill}%"></div>'
+            '<div class="left-ladder-glow"></div>'
+            f'{ladder_ticks}'
+            '</div>'
+            f'<div class="left-ladder-current-title"><b>{ladder_title["short"]}</b><br>{ladder_next_text}</div>'
+            '</div>'
+            f'{title_toast_html}'
+            '</div>'
             '</div>'
         )
 
-    # Build this as one clean HTML string so Markdown cannot treat the indented
-    # HTML as a literal code block.
-    left_ladder_html = (
-        '<div class="premove-side-wrap">'
-        '<div class="premove-side-card">'
-        '<div class="word-stack" aria-label="premoves takes takes takes">'
-        '<span class="stack-line line-premoves">PREMOVES</span>'
-        '<span class="stack-line line-takes-1">TAKES</span>'
-        '<span class="stack-line line-takes-2">TAKES</span>'
-        '<span class="stack-line line-takes-3">TAKES</span>'
-        '</div>'
-        f'<div class="left-ladder-card" style="--fill-height:{ladder_fill}%">'
-        '<div class="left-ladder-title">Master Ladder</div>'
-        f'<div class="left-ladder-rating">{st.session_state.player_rating}</div>'
-        '<div class="left-ladder-track">'
-        f'<div class="left-ladder-fill" style="height:{ladder_fill}%"></div>'
-        '<div class="left-ladder-glow"></div>'
-        f'{ladder_ticks}'
-        '</div>'
-        f'<div class="left-ladder-current-title"><b>{ladder_title["short"]}</b><br>{ladder_next_text}</div>'
-        '</div>'
-        f'{title_toast_html}'
-        '</div>'
-        '</div>'
-    )
+        st.markdown(left_ladder_html, unsafe_allow_html=True)
 
-    st.markdown(left_ladder_html, unsafe_allow_html=True)
-
-    # Clear after rendering so it flashes beside the ladder but does not keep reappearing.
-    if promoted:
-        st.session_state.pending_title_popup = None
-
+        # Clear after rendering so it flashes beside the ladder but does not keep reappearing.
+        if promoted:
+            st.session_state.pending_title_popup = None
 with board_col:
     # Hidden fixed gameplay settings.
     # Keep sound on, and keep the premove/engine delay locked at 2100ms.
     st.session_state.sound_enabled = True
     st.session_state.engine_move_time_ms = 2100
 
-    if st.session_state.learning_active:
+    if st.session_state.get("dfu_active"):
+        render_dfu_board()
+    elif st.session_state.learning_active:
         render_learning_mode_board()
     elif pos:
         value = browser_board(
@@ -5932,6 +7614,13 @@ with side_col:
     if st.button("♛   Start Master Tournament", width="stretch", type="primary"):
         request_mode_start("master_tournament", positions, master_tournament_positions)
         st.rerun()
+
+    if st.button("🎯   Start DFU", width="stretch", type="primary"):
+        request_mode_start("dfu", positions, master_tournament_positions)
+        st.rerun()
+
+    if st.session_state.get("dfu_active"):
+        st.toggle("Show winning continuation", key="dfu_show_continuation")
 
     st.markdown(
         """
