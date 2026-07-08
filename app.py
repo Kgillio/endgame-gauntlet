@@ -4319,6 +4319,7 @@ def is_master_tournament_mode():
 # DFU no dimming: repeated clicks/dragging no longer fade the board or held pieces.
 # DFU local selection no rerun: clicking candidate pieces/answer rows no longer calls Streamlit, so no stale iframe fade.
 # Responsive board fix: board/squares/pieces/arrows scale to iframe width instead of clipping.
+# DFU generated pool: thousands of random middle/endgame 3-move-order puzzles; no starting/opening quiz positions.
 
 def mode_label():
     if is_unlimited_mode():
@@ -6681,40 +6682,13 @@ st.markdown(
 )
 
 
-DFU_PUZZLES = [
+DFU_GENERATED_PUZZLE_COUNT = 2500
+
+# Small hand-made seed set only. No beginning-of-game/opening positions.
+# Most DFU rounds are generated into a much larger middle/endgame pool below.
+DFU_SEED_PUZZLES = [
     {
-        "id": "dfu_seq_001",
-        "title": "London Setup",
-        "fen": chess.STARTING_FEN,
-        "player_color": "white",
-        "difficulty": "Easy",
-        "explanation": "DFU is now a three-move order test. Make the right move, let the computer answer, then solve the next move in the same game.",
-        "sequence": [
-            {
-                "move": "d2d4",
-                "reply": "d7d5",
-                "candidates": ["d2", "e2", "g1", "c1"],
-                "prompt": "Move 1 of 3 — claim the center first.",
-                "explanation": "d4 plants the center flag and starts the London structure.",
-            },
-            {
-                "move": "c1f4",
-                "reply": "g8f6",
-                "candidates": ["c1", "g1", "e2", "b1"],
-                "prompt": "Move 2 of 3 — develop the London bishop.",
-                "explanation": "Bf4 gets the bishop outside the pawn wall before e3 closes the door.",
-            },
-            {
-                "move": "g1f3",
-                "reply": "",
-                "candidates": ["g1", "b1", "e2", "c2"],
-                "prompt": "Move 3 of 3 — reinforce the center.",
-                "explanation": "Nf3 protects the center and prepares the king to castle.",
-            },
-        ],
-    },
-    {
-        "id": "dfu_seq_002",
+        "id": "dfu_seed_passed_pawn_escort",
         "title": "Passed Pawn Escort",
         "fen": "6k1/8/8/4P3/8/8/4K3/8 w - - 0 1",
         "player_color": "white",
@@ -6745,7 +6719,7 @@ DFU_PUZZLES = [
         ],
     },
     {
-        "id": "dfu_seq_003",
+        "id": "dfu_seed_rook_cutoff",
         "title": "Rook Cutoff",
         "fen": "6k1/6pp/8/3R4/8/4K3/8/8 w - - 0 1",
         "player_color": "white",
@@ -6772,68 +6746,6 @@ DFU_PUZZLES = [
                 "candidates": ["e3", "d7", "g2"],
                 "prompt": "Move 3 of 3 — bring the king in.",
                 "explanation": "The king joins the attack so the rook does not have to win alone.",
-            },
-        ],
-    },
-    {
-        "id": "dfu_seq_004",
-        "title": "Knight Route",
-        "fen": "5rk1/6pp/8/8/4N3/8/5PPP/6K1 w - - 0 1",
-        "player_color": "white",
-        "difficulty": "Easy",
-        "explanation": "The knight wins by jumping with tempo and keeping the enemy king uncomfortable.",
-        "sequence": [
-            {
-                "move": "e4f6",
-                "reply": "g8f7",
-                "candidates": ["e4", "g2", "g1", "h2"],
-                "prompt": "Move 1 of 3 — jump with check.",
-                "explanation": "Nf6+ uses the knight's fork power to force the king's hand.",
-            },
-            {
-                "move": "f6h7",
-                "reply": "f7e6",
-                "candidates": ["f6", "g2", "g1"],
-                "prompt": "Move 2 of 3 — take the loose pawn.",
-                "explanation": "Nxh7 keeps the knight active and wins material while the king is displaced.",
-            },
-            {
-                "move": "h7g5",
-                "reply": "",
-                "candidates": ["h7", "g2", "g1"],
-                "prompt": "Move 3 of 3 — return with tempo.",
-                "explanation": "Ng5+ brings the knight back into the fight and keeps the attack alive.",
-            },
-        ],
-    },
-    {
-        "id": "dfu_seq_005",
-        "title": "Bishop Route",
-        "fen": "6k1/6pp/8/8/2B5/8/5PPP/6K1 w - - 0 1",
-        "player_color": "white",
-        "difficulty": "Easy",
-        "explanation": "The bishop's job is to use long diagonals and keep improving with tempo.",
-        "sequence": [
-            {
-                "move": "c4e6",
-                "reply": "g8f8",
-                "candidates": ["c4", "g2", "f2", "g1"],
-                "prompt": "Move 1 of 3 — use the diagonal.",
-                "explanation": "Be6 activates the bishop and bothers the enemy king from distance.",
-            },
-            {
-                "move": "e6d7",
-                "reply": "f8e7",
-                "candidates": ["e6", "g2", "g1"],
-                "prompt": "Move 2 of 3 — keep the bishop active.",
-                "explanation": "Bd7 keeps the bishop in the fight while the king is forced back.",
-            },
-            {
-                "move": "d7g4",
-                "reply": "",
-                "candidates": ["d7", "g2", "f2"],
-                "prompt": "Move 3 of 3 — relocate with purpose.",
-                "explanation": "Bg4 keeps the bishop useful and aims at the enemy's weak squares.",
             },
         ],
     },
@@ -7073,11 +6985,399 @@ def normalize_dfu_puzzle(puzzle):
     puzzle["difficulty"] = puzzle.get("difficulty", "Easy")
     return puzzle
 
-def load_dfu_puzzles():
-    puzzles = [normalize_dfu_puzzle(item) for item in DFU_PUZZLES]
-    puzzles = [item for item in puzzles if item.get("sequence")]
 
+DFU_PIECE_VALUES = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 320,
+    chess.BISHOP: 330,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 0,
+}
+
+
+def dfu_safe_board_from_fen(fen):
+    try:
+        board = chess.Board(str(fen or "").strip())
+        if board.is_valid() and not board.is_game_over():
+            return board
+    except Exception:
+        pass
+
+    return None
+
+
+def dfu_is_middle_or_endgame(board):
+    if not board or board.is_game_over():
+        return False
+
+    piece_count = len(board.piece_map())
+
+    # Avoid starting/opening-feeling positions. DFU should be middle/endgame only.
+    if piece_count > 26:
+        return False
+
+    if piece_count < 4:
+        return False
+
+    # If it still has almost every piece, it needs to be deep enough not to feel like an opening quiz.
+    if piece_count >= 24 and board.fullmove_number < 12:
+        return False
+
+    return True
+
+
+def dfu_extract_fens_from_data(data):
+    fens = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            fen = value.get("fen") or value.get("FEN") or value.get("position") or value.get("start_fen")
+
+            if isinstance(fen, str) and "/" in fen and " " in fen:
+                fens.append(fen)
+
+            for child in value.values():
+                walk(child)
+
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk(data)
+    return fens
+
+
+def dfu_fens_from_positions_file(limit=1800):
+    if not POSITIONS_FILE.exists():
+        return []
+
+    try:
+        data = json.loads(POSITIONS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    fens = []
+    seen = set()
+
+    for fen in dfu_extract_fens_from_data(data):
+        if fen in seen:
+            continue
+
+        board = dfu_safe_board_from_fen(fen)
+
+        if not board or not dfu_is_middle_or_endgame(board):
+            continue
+
+        seen.add(fen)
+        fens.append(board.fen())
+
+        if len(fens) >= limit:
+            break
+
+    return fens
+
+
+def dfu_move_score(board, move, rng):
+    score = rng.random() * 8.0
+    piece = board.piece_at(move.from_square)
+    captured = board.piece_at(move.to_square)
+
+    if board.is_capture(move):
+        if captured:
+            score += DFU_PIECE_VALUES.get(captured.piece_type, 0) * 0.08
+        else:
+            score += 20
+
+    if board.gives_check(move):
+        score += 55
+
+    if move.promotion:
+        score += DFU_PIECE_VALUES.get(move.promotion, 800) * 0.07 + 70
+
+    if piece:
+        to_file = chess.square_file(move.to_square)
+        to_rank = chess.square_rank(move.to_square) + 1
+
+        if piece.color == chess.WHITE:
+            advance = to_rank
+        else:
+            advance = 9 - to_rank
+
+        if piece.piece_type == chess.PAWN:
+            score += advance * 3.0
+        elif piece.piece_type in (chess.KNIGHT, chess.BISHOP):
+            # Prefer pieces moving toward useful central squares.
+            score += max(0, 10 - (abs(to_file - 3.5) + abs((to_rank - 1) - 3.5)) * 2)
+        elif piece.piece_type == chess.KING and len(board.piece_map()) <= 10:
+            # In endgames, king activity matters.
+            score += max(0, 14 - (abs(to_file - 3.5) + abs((to_rank - 1) - 3.5)) * 2.2)
+
+    try:
+        board.push(move)
+
+        if board.is_checkmate():
+            score += 10000
+        elif board.is_game_over():
+            score -= 700
+
+        board.pop()
+    except Exception:
+        score -= 1000
+
+    return score
+
+
+def dfu_choose_good_move(board, rng):
+    legal_moves = list(board.legal_moves)
+
+    if not legal_moves:
+        return None
+
+    scored = sorted(
+        ((dfu_move_score(board, move, rng), move) for move in legal_moves),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+    # Take one of the best few so the pool has variety.
+    pool = [move for _, move in scored[: min(7, len(scored))]]
+    return rng.choice(pool) if pool else None
+
+
+def dfu_candidate_squares_for_move(board, move, rng):
+    correct = chess.square_name(move.from_square)
+    moving_piece = board.piece_at(move.from_square)
+    candidates = [correct]
+
+    if moving_piece:
+        same_side = []
+        other_side = []
+
+        for square, piece in board.piece_map().items():
+            square_name = chess.square_name(square)
+
+            if square_name == correct:
+                continue
+
+            if piece.color == moving_piece.color:
+                same_side.append(square_name)
+            else:
+                other_side.append(square_name)
+
+        rng.shuffle(same_side)
+        rng.shuffle(other_side)
+
+        candidates.extend(same_side)
+        candidates.extend(other_side)
+
+    return candidates[:5]
+
+
+def dfu_prompt_for_move(step_number, board, move):
+    piece = board.piece_at(move.from_square)
+    piece_name = "piece"
+
+    if piece:
+        piece_name = PIECE_DISPLAY.get(piece.piece_type, ("piece", ""))[0].lower()
+
+    if board.gives_check(move):
+        idea = "find the forcing check"
+    elif board.is_capture(move):
+        idea = "win material with the right capture"
+    elif piece and piece.piece_type == chess.PAWN:
+        idea = "push the pawn with purpose"
+    elif piece and piece.piece_type == chess.KING:
+        idea = "improve the king"
+    elif piece and piece.piece_type == chess.ROOK:
+        idea = "activate the rook"
+    elif piece and piece.piece_type == chess.QUEEN:
+        idea = "activate the queen"
+    else:
+        idea = f"improve the {piece_name}"
+
+    return f"Move {step_number} of 3 — {idea}."
+
+
+def dfu_explanation_for_move(board, move):
+    piece = board.piece_at(move.from_square)
+    piece_name = "piece"
+
+    if piece:
+        piece_name = PIECE_DISPLAY.get(piece.piece_type, ("piece", ""))[0]
+
+    if board.gives_check(move):
+        return f"The {piece_name} move is forcing because it checks the king and limits the reply."
+    if board.is_capture(move):
+        return f"The {piece_name} is the key piece because this capture changes the material balance."
+    if piece and piece.piece_type == chess.PAWN:
+        return "The pawn move matters because it creates a clear threat that must be answered."
+    if piece and piece.piece_type == chess.KING:
+        return "The king must become active in this phase instead of watching from far away."
+    if piece and piece.piece_type == chess.ROOK:
+        return "The rook belongs on an active line where it can cut the king or attack loose pieces."
+    if piece and piece.piece_type == chess.QUEEN:
+        return "The queen should become active with threats before the defender settles."
+    return f"The {piece_name} move improves the position and keeps the conversion moving."
+
+
+def dfu_build_sequence_puzzle_from_fen(fen, puzzle_id, rng):
+    board = dfu_safe_board_from_fen(fen)
+
+    if not board or not dfu_is_middle_or_endgame(board):
+        return None
+
+    sequence = []
+    working = board.copy(stack=False)
+
+    for step_index in range(3):
+        if working.is_game_over():
+            return None
+
+        move = dfu_choose_good_move(working, rng)
+
+        if not move:
+            return None
+
+        step = {
+            "move": move.uci(),
+            "reply": "",
+            "candidates": dfu_candidate_squares_for_move(working, move, rng),
+            "prompt": dfu_prompt_for_move(step_index + 1, working, move),
+            "explanation": dfu_explanation_for_move(working, move),
+        }
+
+        working.push(move)
+
+        # The computer answers after move 1 and move 2. After move 3, the round completes.
+        if step_index < 2:
+            if working.is_game_over():
+                return None
+
+            reply = dfu_choose_good_move(working, rng)
+
+            if not reply:
+                return None
+
+            step["reply"] = reply.uci()
+            working.push(reply)
+
+        sequence.append(step)
+
+    return {
+        "id": puzzle_id,
+        "title": "Generated Middle/Endgame",
+        "fen": board.fen(),
+        "player_color": "white" if board.turn == chess.WHITE else "black",
+        "difficulty": "Easy",
+        "explanation": "Find the correct three-move order from a real middle/endgame-style position.",
+        "sequence": sequence,
+    }
+
+
+def dfu_random_middle_endgame_fen(rng):
+    board = chess.Board()
+
+    # Deep enough to avoid opening quiz vibes, but not so deep every position is empty.
+    plies = rng.randint(22, 72)
+
+    for _ in range(plies):
+        if board.is_game_over():
+            return None
+
+        legal_moves = list(board.legal_moves)
+
+        if not legal_moves:
+            return None
+
+        # Random legal play, lightly biased toward captures/checks to reach middle/endgames faster.
+        scored = []
+        for move in legal_moves:
+            score = rng.random()
+            if board.is_capture(move):
+                score += 1.8
+            if board.gives_check(move):
+                score += 1.0
+            scored.append((score, move))
+
+        scored.sort(key=lambda item: item[0], reverse=True)
+        pool = [move for _, move in scored[: min(12, len(scored))]]
+        board.push(rng.choice(pool))
+
+    if not dfu_is_middle_or_endgame(board):
+        return None
+
+    return board.fen()
+
+
+@st.cache_data(show_spinner=False)
+def build_dfu_puzzle_pool(pool_size=DFU_GENERATED_PUZZLE_COUNT, positions_file_mtime=0.0):
+    rng = random.Random(918273645)
+    puzzles = []
+    seen_fens = set()
+
+    # 1) First use any existing middle/endgame positions already sitting in positions.json.
+    for fen in dfu_fens_from_positions_file(limit=pool_size):
+        if fen in seen_fens:
+            continue
+
+        puzzle = dfu_build_sequence_puzzle_from_fen(
+            fen,
+            f"dfu_file_{len(puzzles) + 1:05d}",
+            rng,
+        )
+
+        if puzzle:
+            puzzles.append(normalize_dfu_puzzle(puzzle))
+            seen_fens.add(fen)
+
+        if len(puzzles) >= pool_size:
+            break
+
+    # 2) Fill the rest with generated middle/endgame positions.
+    attempts = 0
+    max_attempts = pool_size * 45
+
+    while len(puzzles) < pool_size and attempts < max_attempts:
+        attempts += 1
+        fen = dfu_random_middle_endgame_fen(rng)
+
+        if not fen or fen in seen_fens:
+            continue
+
+        puzzle = dfu_build_sequence_puzzle_from_fen(
+            fen,
+            f"dfu_generated_{len(puzzles) + 1:05d}",
+            rng,
+        )
+
+        if not puzzle:
+            continue
+
+        puzzles.append(normalize_dfu_puzzle(puzzle))
+        seen_fens.add(fen)
+
+    # 3) Keep a couple hand-made middle/endgame seeds as fallback only.
+    for seed in DFU_SEED_PUZZLES:
+        if len(puzzles) >= pool_size:
+            break
+
+        normalized = normalize_dfu_puzzle(seed)
+
+        if normalized.get("sequence"):
+            puzzles.append(normalized)
+
+    return [puzzle for puzzle in puzzles if puzzle.get("sequence")]
+
+
+
+def load_dfu_puzzles():
+    positions_file_mtime = POSITIONS_FILE.stat().st_mtime if POSITIONS_FILE.exists() else 0.0
+    puzzles = list(build_dfu_puzzle_pool(DFU_GENERATED_PUZZLE_COUNT, positions_file_mtime))
+
+    # Fresh shuffle every time DFU starts, so Round 1 does not feel repeated.
     random.SystemRandom().shuffle(puzzles)
+
     return puzzles
 
 
