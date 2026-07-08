@@ -1821,18 +1821,34 @@ html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-
 
 
 .result-overlay {
-    position:fixed;
+    position:absolute;
     inset:0;
-    background:rgba(0,0,0,.62);
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,.58);
     display:none;
     align-items:center;
     justify-content:center;
-    z-index:9999;
+    z-index:5000;
+    opacity:1 !important;
+    filter:none !important;
+    pointer-events:auto;
+    border-radius:8px;
 }
-.result-overlay.show { display:flex; }
+.result-overlay.show {
+    display:flex !important;
+    opacity:1 !important;
+    filter:none !important;
+}
+.result-overlay.show .result-card {
+    display:block !important;
+    opacity:1 !important;
+    filter:none !important;
+    transform:translateZ(0);
+}
 .result-card {
-    width:430px;
-    max-width:calc(100% - 40px);
+    width:min(430px, calc(100% - 44px));
+    max-width:calc(100% - 44px);
     background:#111827;
     color:#ffffff;
     border:1px solid rgba(255,255,255,.18);
@@ -2070,7 +2086,7 @@ let chess=null, playerColor="white", playerChar="w", currentFen="", currentToken
 let learningFeedbackMessage="", learningFeedbackResult="", learningGoodSquare="", learningPieceNote="", learningPurposeNotes=[];
 let learningExpectedMoves=[], learningOffbookMessage="Overruling decision made. The engine will answer — call the War Room if it gets dangerous.", learningOffbookMode=false, learningPendingOverruleMove="";
 let dfuMode=false, dfuCandidateSquares=[], dfuAnswerSquares=[], dfuSelectedSquare="", dfuCorrectSquare="", dfuCorrectMove="", dfuReplyMove="", dfuResult="", dfuRevealAvailable=false, dfuRevealedAnswer=false, dfuRevealMoves=[], dfuRevealPlayToken="", lastDfuRevealPlayToken="", dfuRevealPlaying=false, dfuFreePlayAfterReveal=false;
-let selectedSquare=null, draggedFrom=null, premoveQueue=[], visualPieces=null, showPlayerStartGlow=false, playerGlowTimer=null, engineGlowSquare=null, engineGlowTimer=null, roundEnded=false, lossOverlayVisible=false, dismissedLossToken=null, positionTimeline=[], timelineIndex=0, browsingTimeline=false, previewMode=false, pendingPromotion=null, countdownActive=false, countdownTimer=null, playerHasMovedThisRound=false, lastDragClientX=0, lastDragClientY=0, lastDragHoverSquare=null, lastMoveFrom=null, lastMoveTo=null;
+let selectedSquare=null, draggedFrom=null, premoveQueue=[], visualPieces=null, showPlayerStartGlow=false, playerGlowTimer=null, engineGlowSquare=null, engineGlowTimer=null, roundEnded=false, lossOverlayVisible=false, dismissedLossToken=null, pendingLocalRoundResult=null, localLossReported=false, positionTimeline=[], timelineIndex=0, browsingTimeline=false, previewMode=false, pendingPromotion=null, countdownActive=false, countdownTimer=null, playerHasMovedThisRound=false, lastDragClientX=0, lastDragClientY=0, lastDragHoverSquare=null, lastMoveFrom=null, lastMoveTo=null;
 let timerInterval=null, remainingMs=10000, lastTickMs=Date.now(), timerTimeoutSent=false, currentTimerInitialSeconds=10, currentTimerIncrementSeconds=0, timerIncrementMs=0;const PREMOVE_PENALTY_MS=100;
 let engineWorker=null, engineReady=false, engineThinking=false, engineFallback=true, engineMoveTimeMs=1500;
 let currentStockfishElo=800, currentStockfishSkill=0, lastEngineStatusPayload="";
@@ -3708,7 +3724,17 @@ function checkRoundEnd(){
     }
     if(chess.in_draw()||chess.in_stalemate()||chess.in_threefold_repetition()||chess.insufficient_material())finishRound("draw","The position ended in a draw.");
 }
+function mountLossOverlayInsideGame(){
+    const overlay=document.getElementById("lossOverlay");
+    const gameWrap=document.getElementById("gameWrap");
+
+    if(overlay&&gameWrap&&overlay.parentElement!==gameWrap){
+        gameWrap.appendChild(overlay);
+    }
+}
+
 function showLossOverlay(detail){
+    mountLossOverlayInsideGame();
     lossOverlayVisible=true;
     const overlay=document.getElementById("lossOverlay");
     const detailEl=document.getElementById("lossOverlayDetail");
@@ -3722,7 +3748,34 @@ function hideLossOverlay(){
     if(overlay)overlay.classList.remove("show");
     updateStatus("Review mode — move pieces from here.");
 }
+function currentRoundResultPayload(result,detail){
+    return {
+        action:"round_result",
+        result:result,
+        detail:detail,
+        fen:chess?chess.fen():"",
+        history:chess?chess.history():[],
+        nonce:Date.now().toString()+"-"+Math.random().toString()
+    };
+}
+function reportPendingLocalLoss(action="round_result",mode=""){
+    if(!pendingLocalRoundResult||localLossReported)return false;
+
+    const payload=Object.assign({},pendingLocalRoundResult);
+    payload.action=action;
+    payload.nonce=Date.now().toString()+"-"+Math.random().toString();
+
+    if(mode)payload.mode=mode;
+
+    localLossReported=true;
+    setComponentValue(payload);
+    return true;
+}
 function requestNewGame(mode){
+    if(reportPendingLocalLoss("loss_then_start",mode)){
+        return;
+    }
+
     setComponentValue({
         action:"start_game",
         mode:mode,
@@ -3751,8 +3804,14 @@ function finishRound(result,detail){
         buildBoard(true);
         return;
     }
-    if(result==="loss")showLossOverlay(detail);
-    setComponentValue({action:"round_result",result:result,detail:detail,fen:chess.fen(),history:chess.history(),nonce:Date.now().toString()+"-"+Math.random().toString()})
+    if(result==="loss"){
+        pendingLocalRoundResult=currentRoundResultPayload(result,detail);
+        localLossReported=false;
+        showLossOverlay(detail);
+        return;
+    }
+
+    setComponentValue(currentRoundResultPayload(result,detail))
 }
 function fallbackEngineMove(){
     const moves=chess.moves({verbose:true});
@@ -4030,7 +4089,8 @@ function buildBoard(resetSelection=true){
     return;
 }
 clearBoardAnnotations();selectSquare(sq)});square.addEventListener("mouseover",()=>{if(customPieceDragActive){lastDragHoverSquare=sq;markDragHover(sq)}});square.addEventListener("dragover",ev=>{ev.preventDefault();lastDragHoverSquare=sq;markDragHover(sq);rememberDragPoint(ev)});square.addEventListener("drop",ev=>{ev.preventDefault();handleDrop(sq)});boardEl.appendChild(square)})});renderPremoveHighlights();renderCaptured();renderUserArrows();if(resetSelection){selectedSquare=null;draggedFrom=null}else{restoreHeldMoveDots()}const test=document.getElementById("soundTestButton");if(test)test.onclick=()=>playMoveSound();const clear=document.getElementById("clearPremoveButton");if(clear)clear.onclick=()=>clearPremoves();
-const reviewButton=document.getElementById("reviewBoardButton");if(reviewButton)reviewButton.onclick=(ev)=>{ev.preventDefault();hideLossOverlay()};
+mountLossOverlayInsideGame();
+const reviewButton=document.getElementById("reviewBoardButton");if(reviewButton)reviewButton.onclick=(ev)=>{ev.preventDefault();hideLossOverlay();setTimeout(()=>reportPendingLocalLoss("round_result"),60)};
 const lossTenRoundButton=document.getElementById("lossTenRoundButton");if(lossTenRoundButton)lossTenRoundButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("ten_round")};
 const lossUnlimitedButton=document.getElementById("lossUnlimitedButton");if(lossUnlimitedButton)lossUnlimitedButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("unlimited")};
 const lossMasterTournamentButton=document.getElementById("lossMasterTournamentButton");if(lossMasterTournamentButton)lossMasterTournamentButton.onclick=(ev)=>{ev.preventDefault();requestNewGame("master_tournament")};
@@ -4320,6 +4380,8 @@ def is_master_tournament_mode():
 # DFU local selection no rerun: clicking candidate pieces/answer rows no longer calls Streamlit, so no stale iframe fade.
 # Responsive board fix: board/squares/pieces/arrows scale to iframe width instead of clipping.
 # DFU generated pool: thousands of random middle/endgame 3-move-order puzzles; no starting/opening quiz positions.
+# Loss popup no immediate rerun: losses show the card locally first, then report to Streamlit only after review/restart.
+# Loss popup board-only overlay: loss overlay is mounted inside the board card instead of covering the full iframe/page.
 
 def mode_label():
     if is_unlimited_mode():
@@ -6007,6 +6069,49 @@ def apply_component_value(value):
             st.session_state.last_engine_skill,
         )
         return current != previous
+
+
+    if action == "loss_then_start":
+        # Record the loss first, then immediately start the chosen mode.
+        # This avoids an immediate Streamlit rerun before the loss popup appears.
+        if st.session_state.game_active and st.session_state.round_result is None:
+            result = value.get("result", "loss")
+            detail = value.get("detail", "")
+
+            if result == "draw":
+                result = "loss"
+                detail = detail or "Game drawn. Draws count as losses."
+
+            st.session_state.round_result = result
+            st.session_state.round_result_detail = detail
+            st.session_state.round_history = value.get("history", [])
+            st.session_state.round_fen = value.get("fen", "")
+
+            challenge = st.session_state.current_challenge or generate_challenge(current_round_number())
+            update_rating_after_round(result, challenge)
+
+            if result == "win":
+                st.session_state.score += 1
+                st.session_state.wins += 1
+            elif result == "draw":
+                st.session_state.score += 0.5
+                st.session_state.draws += 1
+            else:
+                st.session_state.losses += 1
+
+        mode = value.get("mode", "ten_round")
+
+        if mode == "master_tournament":
+            master_positions = globals().get("master_tournament_positions") or load_master_tournament_positions()
+            start_master_tournament(master_positions)
+            return True
+
+        if mode not in {"ten_round", "unlimited"}:
+            mode = "ten_round"
+
+        start_positions = globals().get("positions") or st.session_state.get("position_bank") or load_positions()
+        start_game(start_positions, mode=mode)
+        return True
 
     if action == "start_game":
         mode = value.get("mode", "ten_round")
