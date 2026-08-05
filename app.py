@@ -1232,7 +1232,12 @@ function render(args){
     }
 
     requestAnimationFrame(()=>{
-        const h=document.documentElement.scrollHeight||document.body.scrollHeight||650;
+        // Use the rendered panel itself so iframe height cannot feed back into
+        // the next measurement and grow forever on mobile.
+        const panel=root.firstElementChild;
+        const h=panel
+            ? Math.ceil(Math.max(panel.offsetHeight, panel.scrollHeight))
+            : 650;
         setFrameHeight(h+2);
     });
 }
@@ -2075,10 +2080,14 @@ body.dragging-piece *,
 <script>
 function sendMessageToStreamlit(type,data){window.parent.postMessage(Object.assign({isStreamlitMessage:true,type:type},data),"*")}
 function setComponentReady(){sendMessageToStreamlit("streamlit:componentReady",{apiVersion:1})}
-function setFrameHeight(height){sendMessageToStreamlit("streamlit:setFrameHeight",{height:height})}
-function saveParentScroll(){try{const y=window.parent.scrollY||window.parent.document.documentElement.scrollTop||0;window.parent.sessionStorage.setItem("browser_engine_scroll_y",y.toString())}catch(e){}}
-function restoreParentScroll(){try{const saved=window.parent.sessionStorage.getItem("browser_engine_scroll_y");if(saved===null)return;const y=Number(saved);if(!Number.isFinite(y))return;setTimeout(()=>window.parent.scrollTo(0,y),25);setTimeout(()=>window.parent.scrollTo(0,y),125);setTimeout(()=>window.parent.scrollTo(0,y),300)}catch(e){}}
-function setComponentValue(value){saveParentScroll();sendMessageToStreamlit("streamlit:setComponentValue",{value:value})}
+let lastReportedFrameHeight=0;
+function setFrameHeight(height){
+    const nextHeight=Math.max(0,Math.ceil(Number(height)||0));
+    if(Math.abs(nextHeight-lastReportedFrameHeight)<2)return;
+    lastReportedFrameHeight=nextHeight;
+    sendMessageToStreamlit("streamlit:setFrameHeight",{height:nextHeight});
+}
+function setComponentValue(value){sendMessageToStreamlit("streamlit:setComponentValue",{value:value})}
 
 const PIECES={P:"♟",N:"♞",B:"♝",R:"♜",Q:"♛",K:"♚",p:"♟",n:"♞",b:"♝",r:"♜",q:"♛",k:"♚"};
 const files=["a","b","c","d","e","f","g","h"], ranks=["8","7","6","5","4","3","2","1"];function displayFiles(){return playerChar==="b"?["h","g","f","e","d","c","b","a"]:files}function displayRanks(){return playerChar==="b"?["1","2","3","4","5","6","7","8"]:ranks}
@@ -2621,8 +2630,14 @@ function squarePixelSize(){
 }
 function updateResponsiveFrameHeight(){
     requestAnimationFrame(()=>{
-        const h=Math.ceil(document.documentElement.scrollHeight || document.body.scrollHeight || 790);
-        setFrameHeight(h+8);
+        // Measure the actual game card, not the iframe viewport. On mobile,
+        // documentElement.scrollHeight can equal the current iframe height;
+        // adding pixels to that value creates an endless growth/scroll loop.
+        const wrap=document.querySelector(".wrap");
+        const h=wrap
+            ? Math.ceil(Math.max(wrap.offsetHeight, wrap.scrollHeight))
+            : 790;
+        setFrameHeight(h+2);
     });
 }
 
@@ -4102,7 +4117,7 @@ const cancelPromotionButton=document.getElementById("cancelPromotionButton");if(
 if(pendingPromotion){positionPromotionPanel(pendingPromotion.to);}
 updateMoveNavStatus();
 updateDfuRevealButton();
-updateResponsiveFrameHeight();restoreParentScroll()}
+updateResponsiveFrameHeight()}
 function initPosition(args){if(typeof Chess==="undefined"){const st=document.getElementById("gameStatus");if(st)st.textContent="Could not load chess.js. Check internet/CDN access.";return}currentToken=args.round_token;currentFen=args.fen;currentRoundNumber=args.round_number||1;currentTotalRounds=args.total_rounds||10;previewMode=args.preview_mode===true;learningMode=args.learning_mode===true;dfuMode=args.dfu_mode===true;dfuCandidateSquares=Array.isArray(args.dfu_candidate_squares)?args.dfu_candidate_squares:[];dfuAnswerSquares=Array.isArray(args.dfu_answer_squares)?args.dfu_answer_squares:[];dfuSelectedSquare=args.dfu_selected_square||"";dfuCorrectSquare=args.dfu_correct_square||"";dfuCorrectMove=args.dfu_correct_move||"";dfuReplyMove=args.dfu_reply_move||"";dfuResult=args.dfu_result||"";dfuRevealAvailable=args.dfu_reveal_available===true;dfuRevealedAnswer=args.dfu_revealed_answer===true;dfuRevealMoves=Array.isArray(args.dfu_reveal_moves)?args.dfu_reveal_moves:[];dfuRevealPlayToken=args.dfu_reveal_play_token||"";dfuFreePlayAfterReveal=false;learningFeedbackMessage=args.learning_feedback_message||"";learningFeedbackResult=args.learning_feedback_result||"";learningGoodSquare=args.learning_good_square||"";learningPieceNote=args.learning_piece_note||"";learningPurposeNotes=Array.isArray(args.learning_purpose_notes)?args.learning_purpose_notes:[];learningExpectedMoves=Array.isArray(args.learning_expected_moves)?args.learning_expected_moves:[];learningOffbookMessage=args.learning_offbook_message||learningOffbookMessage;learningOffbookMode=false;playerColor=args.player_color||"white";const rb=document.getElementById("roundBadge");if(rb)rb.textContent=dfuMode?("DFU — "+(playerColor==="black"?"Black":"White")):(learningMode?("War Room — White"):(previewMode?("Ready Board — "+(playerColor==="black"?"Black":"White")):("Round "+currentRoundNumber+" / "+currentTotalRounds+" — "+(playerColor==="black"?"Black":"White"))));playerChar=nameToColorChar(playerColor);soundEnabled=args.sound_enabled!==false;engineMoveTimeMs=args.engine_move_time_ms||1500;currentStockfishElo=Math.max(800,Math.min(3200,Number(args.stockfish_elo||800)));currentStockfishSkill=Math.max(0,Math.min(20,Number(args.stockfish_skill||0)));configureStockfishStrength();chess=new Chess(currentFen);positionTimeline=[chess.fen()];timelineIndex=0;browsingTimeline=false;premoveQueue=[];visualPieces=null;selectedSquare=null;draggedFrom=null;lastDragHoverSquare=null;lastMoveFrom=null;lastMoveTo=null;clearEngineMoveGlow();setDraggingCursor(false);clearDragHover();clearMoveArrows();userMarkedSquares.clear();drawnArrows=[];arrowDraftFrom=null;arrowDraftTo=null;engineThinking=false;playerHasMovedThisRound=false;roundEnded=false;lossOverlayVisible=false;dismissedLossToken=null;pendingPromotion=null;hideStartCountdown();const overlay=document.getElementById("lossOverlay");if(overlay)overlay.classList.remove("show");const promotionPanel=document.getElementById("promotionPanel");if(promotionPanel)promotionPanel.classList.remove("show");clearPromotionTarget();if(learningMode||dfuMode){showPlayerStartGlow=false;if(playerGlowTimer){clearTimeout(playerGlowTimer);playerGlowTimer=null}}else{showPlayerStartGlow=true;if(playerGlowTimer)clearTimeout(playerGlowTimer);playerGlowTimer=setTimeout(()=>{showPlayerStartGlow=false;buildBoard(false)},1000)}currentTimerInitialSeconds=Math.max(1,Number(args.timer_initial_seconds||10));currentTimerIncrementSeconds=Math.max(0,Number(args.timer_increment_seconds||0));timerIncrementMs=currentTimerIncrementSeconds*1000;remainingMs=currentTimerInitialSeconds*1000;timerTimeoutSent=false;if(timerInterval){clearInterval(timerInterval);timerInterval=null}updateTimerDisplay();updateLearningBoardFeedback();buildBoard(true);playDfuRevealLine();if(previewMode){updateStatus(learningMode?"War Room Academy — choose or play the plan.":"Ready board — choose 10-round or unlimited.");return}
 const shouldCountdown=currentRoundNumber===1;
 if(shouldCountdown){
@@ -4206,9 +4221,19 @@ document.addEventListener("mouseup",ev=>{
 document.addEventListener("dragover",ev=>{rememberDragPoint(ev);squareFromClientPoint(lastDragClientX,lastDragClientY)});
 document.addEventListener("drop",ev=>{rememberDragPoint(ev);finishDragAtPoint(ev)});
 document.addEventListener("dragend",ev=>finishDragAtPoint(ev));
+let lastResponsiveWidth=Math.round(window.innerWidth||0);
+let responsiveResizeTimer=null;
 window.addEventListener("resize",()=>{
-    updateResponsiveFrameHeight();
-    buildBoard(false);
+    // Mobile browsers fire resize continuously while the address bar opens or
+    // closes. Ignore height-only changes and rebuild only when width changes.
+    const nextWidth=Math.round(window.innerWidth||0);
+    if(Math.abs(nextWidth-lastResponsiveWidth)<2)return;
+    lastResponsiveWidth=nextWidth;
+    clearTimeout(responsiveResizeTimer);
+    responsiveResizeTimer=setTimeout(()=>{
+        buildBoard(false);
+        updateResponsiveFrameHeight();
+    },120);
 });
 document.addEventListener("keydown",ev=>{
     const tag=(ev.target&&ev.target.tagName?ev.target.tagName.toLowerCase():"");
@@ -4379,6 +4404,7 @@ def is_master_tournament_mode():
 # DFU no dimming: repeated clicks/dragging no longer fade the board or held pieces.
 # DFU local selection no rerun: clicking candidate pieces/answer rows no longer calls Streamlit, so no stale iframe fade.
 # Responsive board fix: board/squares/pieces/arrows scale to iframe width instead of clipping.
+# Mobile scroll fix: removed forced parent scrolling, stopped iframe height feedback growth, and ignored address-bar-only resize events.
 # DFU generated pool: thousands of random middle/endgame 3-move-order puzzles; no starting/opening quiz positions.
 # Loss popup no immediate rerun: losses show the card locally first, then report to Streamlit only after review/restart.
 # Loss popup board-only overlay: loss overlay is mounted inside the board card instead of covering the full iframe/page.
